@@ -95,6 +95,34 @@ CREATE INDEX IF NOT EXISTS idx_private_letters_person_ts
 """
 
 
+_MIGRATION_003_SQL = """
+CREATE TABLE IF NOT EXISTS counterfactuals (
+    counterfactual_id TEXT PRIMARY KEY,
+    tick_id TEXT,
+    ts TEXT NOT NULL,
+    person_id TEXT,
+    chosen_action_ref TEXT,
+    rejected_action TEXT NOT NULL,
+    rejected_action_payload_json TEXT NOT NULL DEFAULT '{}',
+    reason TEXT,
+    source TEXT NOT NULL,
+    expected_outcome TEXT,
+    evidence_type TEXT,
+    importance INTEGER NOT NULL DEFAULT 3,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_counterfactuals_ts
+    ON counterfactuals(ts DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_counterfactuals_source
+    ON counterfactuals(source, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_counterfactuals_tick
+    ON counterfactuals(tick_id);
+CREATE INDEX IF NOT EXISTS idx_counterfactuals_person
+    ON counterfactuals(person_id, ts DESC);
+"""
+
+
 MIGRATIONS = [
     Migration(
         name="001_initial_schema",
@@ -293,6 +321,10 @@ MIGRATIONS = [
     Migration(
         name="002_interaction_orchestrator",
         sql=_MIGRATION_002_SQL,
+    ),
+    Migration(
+        name="003_counterfactuals",
+        sql=_MIGRATION_003_SQL,
     ),
 ]
 
