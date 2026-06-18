@@ -303,12 +303,32 @@ fi
 
 MORNING_SECTION=""
 if [ "$IS_FIRST_SESSION_TODAY" = true ]; then
+  # consciousness-mcp / individual-kernel-mcp の sleep_consolidate が
+  # quiet hours 中に morning_briefing.json を書く（Phase 2.1）。
+  # 存在すれば summary_line を1行プリペンドし、無ければ従来通り。
+  MORNING_BRIEFING_PATH="${MORNING_BRIEFING_PATH:-$HOME/.claude/morning_briefing.json}"
+  BRIEFING_LINE=""
+  if [ -f "$MORNING_BRIEFING_PATH" ]; then
+    if command -v jq >/dev/null 2>&1; then
+      BRIEFING_LINE=$(jq -r '.summary_line // ""' "$MORNING_BRIEFING_PATH" 2>/dev/null)
+    else
+      BRIEFING_LINE=$(grep '"summary_line"' "$MORNING_BRIEFING_PATH" 2>/dev/null | head -1 | sed -E 's/.*"summary_line"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/')
+    fi
+  fi
+
   MORNING_TEXT="${MORNING_PROMPT:-今日の最初の自律行動だ。朝の再構成として以下を実施せよ：
 1. recall(context=\"直近の重要な決定・未完了タスク\") を呼び出す
 2. 前日の行動を確認し、今日やりたいことを考えよ}"
+
+  BRIEFING_SECTION=""
+  if [ -n "$BRIEFING_LINE" ]; then
+    BRIEFING_SECTION="${BRIEFING_LINE}
+"
+  fi
+
   MORNING_SECTION="
 ## 今日初めてのHeartbeat
-${MORNING_TEXT}
+${BRIEFING_SECTION}${MORNING_TEXT}
 "
 fi
 
