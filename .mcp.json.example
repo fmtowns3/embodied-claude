@@ -53,6 +53,15 @@
       "command": "uv",
       "args": ["run", "--directory", "sociality-mcp", "sociality-mcp"]
     },
+    "individual-kernel": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "consciousness-mcp/packages/individual-kernel-mcp",
+        "individual-kernel-mcp"
+      ]
+    },
     "garmin-health": {
       "command": "node",
       "args": ["/path/to/garmin-health-mcp/index.js"],

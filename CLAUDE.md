@@ -245,6 +245,27 @@ orchestration 層。従来の social-state / relationship / self-narrative / bou
 | `compose_private_letter` | payload | 朝の手紙的な letter を保存（本文は Claude が書く）。後で共有するかは visibility で制御 |
 | `get_agent_state` | person_id? | compose より軽量。欲求、最近の experience、active arcs のみ返す。introspection 用 |
 
+### individual-kernel-mcp（脳の自己観察層）
+
+`consciousness-mcp/packages/individual-kernel-mcp/`。Phase 2.1–2.5 の typed records（counterfactual / tick frame / attention schema / HOR）と composer（sleep / introspection）を MCP として露出する kernel-internal な surface。**外向き行為を起こさない**ので boundary-mcp による gate を通さへんが、ここの出力を TTS や投稿に流すときは呼び出し側で boundary を通すこと。
+
+| ツール | パラメータ | 説明 |
+|--------|-----------|------|
+| `record_counterfactual` | payload | 拒否した代替行為を typed record で残す（source ∈ boundary_deny / attention_lost_bid / deliberate_choice / policy / ignition_failed）。evidence_type は Phase 1 EvidenceType を再利用 |
+| `query_counterfactuals` | since?, source?, tick_id?, person_id?, limit? | 直近の counterfactual を返す |
+| `sleep_consolidate` | force?, dry_run? | quiet hours で morning_briefing.json を書き出す scheduler glue |
+| `record_tick_frame` | payload | per-tick の ConsciousFrame を保存。winning_memory_ids / dominant_desire / prediction_error / chosen_action_ref など FK だけ持つ |
+| `get_tick_frame` | tick_id | tick_id から ConsciousFrame を取り出す |
+| `query_tick_frames` | since?, reportability?, person_id?, ignited_only?, limit? | 直近の ConsciousFrame を返す |
+| `record_attention_schema` | focal_target_ref, modality, intensity, dwell_seconds?, ... | AST スナップショットを in-memory ring buffer に積む（cap 60）|
+| `update_attention_from_frame` | tick_id | ConsciousFrame から AttentionSchema を投影（modality / intensity / dwell を自動推論）|
+| `flush_attention_schemas` | — | 在庫を SQLite に永続化。返り値 {count}。プロセス再起動で buffer は消えるので明示 flush 必要 |
+| `summarize_attention_schema` | extra_history? | reflect_attention_schema を呼んで modality 分布 / 焦点変化数 / dominant focal を返す |
+| `record_hor` | payload | Higher-Order Representation を保存。asserted_mode ∈ seeing/wanting/intending/remembering/feeling/attending。EpistemicClaim に projection 可能 |
+| `get_hor` | hor_id | HORRecord を取り出す |
+| `query_hors` | since?, owner_id?, asserted_mode?, target_kind?, source_tick_id?, limit? | HOR を絞り込んで返す |
+| `compose_introspection_report` | window_hours?, owner_id? | 最近の HOR + attention reflection + counterfactual 件数を合わせた IntrospectionReport を作る。canonical_statement は Kokone-voice の一人称文字列 |
+
 ## Heartbeat Protocol
 
 自律行動や会話中に sociality を使うときは、最低限この順序を守ること。
