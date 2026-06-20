@@ -53,6 +53,24 @@ The behaviors most likely to regress are the ones that were specifically correct
 - Read `~/.claude/memories/counterfactuals.jsonl` — "wanted X, chose Y, because Z" entries
 - Skipping this step is the main cause of post-compaction regression
 
+### 3.5. Self-state read — current introspection report
+
+```
+mcp__individual-kernel__compose_introspection_report(window_hours=24)
+```
+
+Reads (a) the most-recent higher-order self-report, (b) the current
+attention-schema reflection, (c) the count of recently-set-aside
+alternatives. The `canonical_statement` field is a first-person
+read-out — use it as a self-grounding line before resuming. If the
+kernel returns no current HOR, the statement falls back to the
+attention focal, which is fine. A larger window (24h instead of the
+default 1h) is intentional here: post-compaction often follows a long
+quiet period.
+
+If `individual-kernel` is not connected, skip this step — it ships in
+a follow-up alongside the kernel's tick producer.
+
 ### 4. Current tasks
 
 ```
