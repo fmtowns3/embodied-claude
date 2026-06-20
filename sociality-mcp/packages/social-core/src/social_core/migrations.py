@@ -95,6 +95,32 @@ CREATE INDEX IF NOT EXISTS idx_private_letters_person_ts
 """
 
 
+_MIGRATION_004_SQL = """
+CREATE TABLE IF NOT EXISTS tick_frames (
+    tick_id TEXT PRIMARY KEY,
+    ts TEXT NOT NULL,
+    person_id TEXT,
+    ignited INTEGER NOT NULL DEFAULT 0,
+    conflicted INTEGER NOT NULL DEFAULT 0,
+    attention_target_ref TEXT,
+    dominant_desire TEXT,
+    winning_memory_ids_json TEXT NOT NULL DEFAULT '[]',
+    prediction_error_json TEXT NOT NULL DEFAULT '{}',
+    affect_summary TEXT,
+    chosen_action_ref TEXT,
+    reportability TEXT NOT NULL DEFAULT 'mentionable',
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_tick_frames_ts
+    ON tick_frames(ts DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tick_frames_reportability
+    ON tick_frames(reportability, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_tick_frames_person
+    ON tick_frames(person_id, ts DESC);
+"""
+
+
 _MIGRATION_003_SQL = """
 CREATE TABLE IF NOT EXISTS counterfactuals (
     counterfactual_id TEXT PRIMARY KEY,
@@ -325,6 +351,10 @@ MIGRATIONS = [
     Migration(
         name="003_counterfactuals",
         sql=_MIGRATION_003_SQL,
+    ),
+    Migration(
+        name="004_tick_frames",
+        sql=_MIGRATION_004_SQL,
     ),
 ]
 
