@@ -27,6 +27,9 @@ dev = [
 transcribe = [
     "openai-whisper>=20231117",
 ]
+transcribe-faster = [
+    "faster-whisper>=1.0.0",
+]
 
 [project.scripts]
 wifi-cam-mcp = "wifi_cam_mcp.server:main"

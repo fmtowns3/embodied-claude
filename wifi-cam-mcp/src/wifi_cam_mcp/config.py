@@ -118,6 +118,9 @@ class ServerConfig:
     version: str = "0.1.0"
     capture_dir: str = "/tmp/wifi-cam-mcp"
     mic_source: str = "camera"  # "camera" (RTSP) or "local" (PC microphone)
+    mic_device: str | None = None  # DirectShow device name for Windows local mic
+    transcribe_backend: str = "openai-whisper"  # "openai-whisper" or "faster-whisper"
+    transcribe_model: str = "base"  # Whisper model size (tiny/base/small/medium/large)
 
     @classmethod
     def from_env(cls) -> "ServerConfig":
@@ -125,9 +128,18 @@ class ServerConfig:
         mic_source = os.getenv("MIC_SOURCE", "camera").lower()
         if mic_source not in ("camera", "local"):
             raise ValueError(f"Invalid MIC_SOURCE '{mic_source}'. Must be 'camera' or 'local'.")
+        transcribe_backend = os.getenv("TRANSCRIBE_BACKEND", "openai-whisper").lower()
+        if transcribe_backend not in ("openai-whisper", "faster-whisper"):
+            raise ValueError(
+                f"Invalid TRANSCRIBE_BACKEND '{transcribe_backend}'. "
+                "Must be 'openai-whisper' or 'faster-whisper'."
+            )
         return cls(
             name=os.getenv("MCP_SERVER_NAME", "wifi-cam-mcp"),
             version=os.getenv("MCP_SERVER_VERSION", "0.1.0"),
             capture_dir=os.getenv("CAPTURE_DIR", "/tmp/wifi-cam-mcp"),
             mic_source=mic_source,
+            mic_device=os.getenv("MIC_DEVICE") or None,
+            transcribe_backend=transcribe_backend,
+            transcribe_model=os.getenv("TRANSCRIBE_MODEL", "base"),
         )

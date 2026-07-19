@@ -3,8 +3,11 @@
 import asyncio
 import base64
 import io
+import locale
 import logging
+import re
 import tempfile
+import threading
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -99,15 +102,126 @@ MAX_RECONNECT_RETRIES = 2
 RECONNECT_DELAY = 1.0  # seconds
 
 
+# ---------------------------------------------------------------------------
+# Whisper model cache
+# ---------------------------------------------------------------------------
+# Loading a Whisper model takes ~1.3s, so cache it at module level and reuse
+# it across listen calls. Models are loaded lazily on first transcription.
+# The lock guards against concurrent loads from asyncio.to_thread.
+
+_whisper_models: dict[tuple[str, str], object] = {}
+_whisper_models_lock = threading.Lock()
+
+
+def _get_whisper_model(backend: str, model_size: str):
+    """Load a Whisper model, or return the cached one (blocking).
+
+    Args:
+        backend: "openai-whisper" or "faster-whisper"
+        model_size: Model size (e.g. "tiny", "base", "small")
+
+    Returns:
+        Loaded model instance (cached per backend/size pair)
+    """
+    key = (backend, model_size)
+    with _whisper_models_lock:
+        model = _whisper_models.get(key)
+        if model is None:
+            if backend == "faster-whisper":
+                import ctranslate2
+                from faster_whisper import WhisperModel
+
+                # CTranslate2: float16 on GPU, int8 quantization on CPU
+                if ctranslate2.get_cuda_device_count() > 0:
+                    device, compute_type = "cuda", "float16"
+                else:
+                    device, compute_type = "cpu", "int8"
+                model = WhisperModel(model_size, device=device, compute_type=compute_type)
+            else:
+                import whisper
+
+                # load_model picks cuda automatically when available
+                model = whisper.load_model(model_size)
+            _whisper_models[key] = model
+    return model
+
+
+def _transcribe_with_model(backend: str, model, audio_path: str) -> str:
+    """Transcribe an audio file with a loaded model (blocking).
+
+    Both backends return the same shape of result: the transcript text.
+    """
+    if backend == "faster-whisper":
+        segments, _info = model.transcribe(audio_path, language="ja")
+        return "".join(segment.text for segment in segments).strip()
+    result = model.transcribe(audio_path, language="ja")
+    return result.get("text", "").strip()
+
+
+async def _find_dshow_audio_device() -> str:
+    """Find the first DirectShow audio device on Windows via ffmpeg.
+
+    ffmpeg prints the device list to stderr and exits nonzero; that is
+    expected behavior, so we parse stderr regardless of the return code.
+
+    Returns:
+        Name of the first audio device (e.g. "マイク (Realtek Audio)")
+    """
+    cmd = [
+        "ffmpeg",
+        "-hide_banner",
+        "-list_devices", "true",
+        "-f", "dshow",
+        "-i", "dummy",
+    ]
+    process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        _, stderr_data = await asyncio.wait_for(process.communicate(), timeout=10.0)
+    except asyncio.TimeoutError:
+        process.kill()
+        raise RuntimeError("DirectShow device listing timed out after 10s")
+
+    # Device names are often non-ASCII on Japanese Windows. Modern ffmpeg
+    # outputs UTF-8; fall back to the ANSI code page for older builds.
+    try:
+        listing = stderr_data.decode("utf-8")
+    except UnicodeDecodeError:
+        listing = stderr_data.decode(locale.getpreferredencoding(False), errors="replace")
+
+    # ffmpeg lists devices as: [dshow @ ...] "Device Name" (audio)
+    devices = re.findall(r'"([^"]+)"\s+\(audio\)', listing)
+    if not devices:
+        raise RuntimeError(
+            "No DirectShow audio device found. Set the MIC_DEVICE environment "
+            "variable to your microphone's device name "
+            "(list devices with: ffmpeg -list_devices true -f dshow -i dummy)"
+        )
+    return devices[0]
+
+
 class TapoCamera:
     """Controller for Tapo cameras via ONVIF protocol.
 
     Supports C210, C220, and other ONVIF-compatible Tapo PTZ cameras.
     """
 
-    def __init__(self, config: CameraConfig, capture_dir: str = "/tmp/wifi-cam-mcp"):
+    def __init__(
+        self,
+        config: CameraConfig,
+        capture_dir: str = "/tmp/wifi-cam-mcp",
+        mic_device: str | None = None,
+        transcribe_backend: str = "openai-whisper",
+        transcribe_model: str = "base",
+    ):
         self._config = config
         self._capture_dir = Path(capture_dir)
+        self._mic_device = mic_device
+        self._transcribe_backend = transcribe_backend
+        self._transcribe_model = transcribe_model
         self._lock = asyncio.Lock()
 
         # ONVIF objects (set on connect)
@@ -720,6 +834,23 @@ class TapoCamera:
                         "-t", str(duration),
                         "-y", file_path,
                     ]
+                elif system == "Windows":
+                    # dshow requires the literal device name. Use MIC_DEVICE
+                    # if set, otherwise pick the first audio device found.
+                    device = self._mic_device or await _find_dshow_audio_device()
+                    # Some devices (notably Bluetooth headsets) need a moment to
+                    # start delivering samples, which truncates the beginning of
+                    # the recording. A smaller buffer reduces the loss.
+                    cmd = [
+                        "ffmpeg",
+                        "-f", "dshow",
+                        "-audio_buffer_size", "50",
+                        "-i", f"audio={device}",
+                        "-ar", "16000",
+                        "-ac", "1",
+                        "-t", str(duration),
+                        "-y", file_path,
+                    ]
                 else:
                     raise RuntimeError(f"Unsupported platform for local microphone: {system}")
             else:
@@ -770,7 +901,10 @@ class TapoCamera:
             raise RuntimeError(f"Failed to record audio: {e!s}") from e
 
     async def _transcribe_audio(self, audio_path: str) -> str | None:
-        """Transcribe audio file using OpenAI Whisper.
+        """Transcribe audio file using Whisper.
+
+        The backend (openai-whisper or faster-whisper) and model size are
+        configured via TRANSCRIBE_BACKEND / TRANSCRIBE_MODEL.
 
         Args:
             audio_path: Path to the audio file
@@ -778,14 +912,24 @@ class TapoCamera:
         Returns:
             Transcribed text or None if transcription fails
         """
-        try:
-            import whisper
-        except ImportError:
-            return "[Whisper not installed. Run: pip install openai-whisper]"
+        backend = self._transcribe_backend
+        if backend == "faster-whisper":
+            try:
+                import faster_whisper  # noqa: F401
+            except ImportError:
+                return "[faster-whisper not installed. Run: pip install faster-whisper]"
+        else:
+            try:
+                import whisper  # noqa: F401
+            except ImportError:
+                return "[Whisper not installed. Run: pip install openai-whisper]"
 
         try:
-            model = await asyncio.to_thread(whisper.load_model, "base")
-            result = await asyncio.to_thread(model.transcribe, audio_path, language="ja")
-            return result.get("text", "").strip()
+            model = await asyncio.to_thread(
+                _get_whisper_model, backend, self._transcribe_model
+            )
+            return await asyncio.to_thread(
+                _transcribe_with_model, backend, model, audio_path
+            )
         except Exception as e:
             return f"[Transcription failed: {e!s}]"

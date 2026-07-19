@@ -706,7 +706,13 @@ class CameraMCPServer:
         """Connect to the camera(s)."""
         # Connect primary (left) camera
         config = CameraConfig.from_env()
-        self._camera = TapoCamera(config, self._server_config.capture_dir)
+        self._camera = TapoCamera(
+            config,
+            self._server_config.capture_dir,
+            mic_device=self._server_config.mic_device,
+            transcribe_backend=self._server_config.transcribe_backend,
+            transcribe_model=self._server_config.transcribe_model,
+        )
         await self._camera.connect()
         logger.info(f"Connected to left/primary camera at {config.host}")
 
@@ -714,7 +720,13 @@ class CameraMCPServer:
         right_config = CameraConfig.right_camera_from_env()
         if right_config:
             try:
-                self._camera_right = TapoCamera(right_config, self._server_config.capture_dir)
+                self._camera_right = TapoCamera(
+                    right_config,
+                    self._server_config.capture_dir,
+                    mic_device=self._server_config.mic_device,
+                    transcribe_backend=self._server_config.transcribe_backend,
+                    transcribe_model=self._server_config.transcribe_model,
+                )
                 await self._camera_right.connect()
                 self._has_stereo = True
                 logger.info(f"Connected to right camera at {right_config.host} (stereo vision enabled)")
