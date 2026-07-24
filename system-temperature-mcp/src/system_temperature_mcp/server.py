@@ -17,7 +17,6 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-
 server = Server("system-temperature-mcp")
 
 
@@ -140,6 +139,7 @@ def _run_powershell(script: str) -> str:
             capture_output=True,
             text=True,
             timeout=5,
+            check=False,
         )
         return result.stdout.strip()
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
@@ -160,7 +160,7 @@ def _get_lhm_webserver_temps() -> list[dict[str, Any]]:
         "SYSTEM_TEMPERATURE_LHM_URL", "http://localhost:8085/data.json"
     )
     try:
-        with urllib.request.urlopen(url, timeout=2) as resp:  # noqa: S310 (localhost)
+        with urllib.request.urlopen(url, timeout=2) as resp:
             data = json.load(resp)
     except (URLError, OSError, json.JSONDecodeError, ValueError):
         return []

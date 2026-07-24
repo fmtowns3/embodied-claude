@@ -30,7 +30,7 @@ Windows ネイティブでも実 CPU 温度を取得できるようにしてい�
 
 | 項目 | 内容 |
 |------|------|
-| Python | 3.12 以上 |
+| Python | 3.13（root `.python-version` で固定） |
 | uv | パッケージ／実行管理（`winget install astral-sh.uv` 等） |
 | Claude Code | Windows ネイティブ版 |
 | （温度取得用）LibreHardwareMonitor | 実 CPU/GPU 温度を取得する場合に使用。任意 |
@@ -39,7 +39,7 @@ Windows ネイティブでも実 CPU 温度を取得できるようにしてい�
 
 ## 1. 依存関係のインストール
 
-プロジェクトルート（この README があるフォルダ）で:
+リポジトリの root（`embodied-claude/`）で:
 
 ```powershell
 uv sync
@@ -50,7 +50,7 @@ uv sync
 動作確認:
 
 ```powershell
-uv run python -c "from system_temperature_mcp import server as s; print(s.get_current_time())"
+uv run --package system-temperature-mcp python -c "from system_temperature_mcp import server as s; print(s.get_current_time())"
 ```
 
 `今は 2026年...やで。` のように表示されれば tzdata 対応は成功です。
@@ -61,7 +61,7 @@ uv run python -c "from system_temperature_mcp import server as s; print(s.get_cu
 
 ### 方法 A: プロジェクトの `.mcp.json`（同梱済み）
 
-このフォルダで `claude` を起動すると、同梱の `.mcp.json` が自動で読み込まれます。
+リポジトリ root で `claude` を起動すると、同梱の `.mcp.json` が自動で読み込まれます。
 パスは環境に合わせて書き換えてください。
 
 ```json
@@ -69,7 +69,7 @@ uv run python -c "from system_temperature_mcp import server as s; print(s.get_cu
   "mcpServers": {
     "system-temperature": {
       "command": "uv",
-      "args": ["--directory", "D:\\path\\to\\system-temperature-mcp", "run", "system-temperature-mcp"]
+      "args": ["run", "--directory", "D:\\path\\to\\embodied-claude", "--package", "system-temperature-mcp", "system-temperature-mcp"]
     }
   }
 }
@@ -78,7 +78,7 @@ uv run python -c "from system_temperature_mcp import server as s; print(s.get_cu
 ### 方法 B: CLI で登録
 
 ```powershell
-claude mcp add system-temperature -- uv --directory "D:\path\to\system-temperature-mcp" run system-temperature-mcp
+claude mcp add system-temperature -- uv run --directory "D:\path\to\embodied-claude" --package system-temperature-mcp system-temperature-mcp
 ```
 
 登録後、`get_current_time` はこの時点で動作します（温度取得は次章）。
@@ -149,7 +149,7 @@ JSON が返り、`"Value": "70.0 °C"` のような温度が含まれていれ�
 MCP 経由の確認:
 
 ```powershell
-uv run python -c "from system_temperature_mcp import server as s; import json; print(json.dumps(s.get_all_temperatures(), ensure_ascii=False))"
+uv run --package system-temperature-mcp python -c "from system_temperature_mcp import server as s; import json; print(json.dumps(s.get_all_temperatures(), ensure_ascii=False))"
 ```
 
 ---
@@ -187,7 +187,7 @@ Claude Code はいつでも温度を読める状態になります。
   "mcpServers": {
     "system-temperature": {
       "command": "uv",
-      "args": ["--directory", "D:\\path\\to\\system-temperature-mcp", "run", "system-temperature-mcp"],
+      "args": ["run", "--directory", "D:\\path\\to\\embodied-claude", "--package", "system-temperature-mcp", "system-temperature-mcp"],
       "env": { "SYSTEM_TEMPERATURE_LHM_URL": "http://localhost:9000/data.json" }
     }
   }
@@ -208,7 +208,7 @@ CPU コアごとの詳細温度は取れませんが、追加ソフト無しで�
 
 | 症状 | 原因と対処 |
 |------|-----------|
-| `ZoneInfoNotFoundError` | `uv sync` で `tzdata` が入っているか確認。 |
+| `ZoneInfoNotFoundError` | root で `uv sync` を実行し、`tzdata` が入っているか確認。 |
 | 温度が「センサーが見つかりません」 | LHM が**管理者で**起動しているか、Web サーバーが Run になっているか、ポートが一致しているかを確認。`curl http://localhost:8085/data.json` で切り分け。 |
 | `data.json` は返るが温度が空 | LHM を管理者で起動していない（ドライバ未ロード）。管理者で起動し直す。 |
 | WMI 名前空間が見えない | Web サーバー方式（優先度 1）を使う。WMI は権限の都合で読めないことがある。 |
@@ -218,6 +218,6 @@ CPU コアごとの詳細温度は取れませんが、追加ソフト無しで�
 ## 検証環境
 
 - Windows 11 Pro / Intel Core i5-7300U
-- Python 3.12 系 + uv、LibreHardwareMonitor 0.9.6
+- Python 3.13 + uv、LibreHardwareMonitor 0.9.6
 - LHM Web サーバー経由で CPU コア温度・SSD 温度の取得、および MCP stdio 経由での
   `get_system_temperature` / `get_current_time` の動作を確認済み。
