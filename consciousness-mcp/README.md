@@ -92,10 +92,9 @@ The implementation lives in
 ## Setup
 
 ```bash
-cd consciousness-mcp/packages/individual-kernel-mcp
-uv sync --extra dev
-uv run pytest
-uv run ruff check .
+uv sync
+uv run pytest consciousness-mcp/packages/individual-kernel-mcp/tests
+uv run ruff check consciousness-mcp/packages/individual-kernel-mcp
 ```
 
 The runtime uses the shared `SOCIAL_DB_PATH` SQLite database. SQLite WAL,
@@ -146,7 +145,7 @@ existing interoception or recall hooks.
 
 ```bash
 uv run \
-  --project consciousness-mcp/packages/individual-kernel-mcp \
+  --package individual-kernel-mcp \
   python benchmarks/phenomenal_candidate/run.py
 ```
 

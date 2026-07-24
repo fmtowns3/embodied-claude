@@ -9,7 +9,7 @@ Run it from the repository root:
 
 ```bash
 uv run \
-  --project consciousness-mcp/packages/individual-kernel-mcp \
+  --package individual-kernel-mcp \
   python benchmarks/phenomenal_candidate/run.py
 ```
 
