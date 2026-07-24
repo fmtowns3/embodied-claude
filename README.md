@@ -3,6 +3,7 @@
 [日本語](./README-ja.md)
 
 [![CI](https://github.com/lifemate-ai/embodied-claude/actions/workflows/ci.yml/badge.svg)](https://github.com/lifemate-ai/embodied-claude/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-v0.3.0-blue.svg)](https://github.com/lifemate-ai/embodied-claude/releases)
 
 Embodied Claude turns a Claude Code project into a persistent, situated
 companion runtime. Start without hardware: Claude can remember across sessions,

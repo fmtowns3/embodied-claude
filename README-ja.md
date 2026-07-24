@@ -3,6 +3,7 @@
 [English](./README.md)
 
 [![CI](https://github.com/lifemate-ai/embodied-claude/actions/workflows/ci.yml/badge.svg)](https://github.com/lifemate-ai/embodied-claude/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-v0.3.0-blue.svg)](https://github.com/lifemate-ai/embodied-claude/releases)
 
 Embodied Claude は、Claude Code を継続的で状況に根ざした companion runtime
 へ変えるプロジェクトです。まず hardware なしで、会話をまたぐ記憶、欲求、
