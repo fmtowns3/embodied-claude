@@ -26,7 +26,7 @@ members = [
 
 [[package]]
 name = "agent-grammar"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "sociality-mcp/packages/agent-grammar" }
 dependencies = [
     { name = "pydantic" },
@@ -269,7 +269,7 @@ wheels = [
 
 [[package]]
 name = "boundary-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "sociality-mcp/packages/boundary-mcp" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
@@ -582,7 +582,7 @@ nvtx = [
 
 [[package]]
 name = "desire-system"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "desire-system" }
 dependencies = [
     { name = "chromadb" },
@@ -647,25 +647,45 @@ wheels = [
 
 [[package]]
 name = "embodied-claude-workspace"
-version = "0.1.0"
+version = "0.3.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "agent-grammar" },
-    { name = "boundary-mcp" },
     { name = "desire-system" },
     { name = "individual-kernel-mcp" },
-    { name = "interaction-orchestrator-mcp" },
-    { name = "joint-attention-mcp" },
     { name = "memory-mcp" },
-    { name = "relationship-mcp" },
-    { name = "self-narrative-mcp" },
-    { name = "social-core" },
-    { name = "social-state-mcp" },
     { name = "sociality-mcp" },
+]
+
+[package.optional-dependencies]
+all = [
     { name = "system-temperature-mcp" },
-    { name = "tts-mcp", extra = ["all"] },
+    { name = "tts-mcp", extra = ["elevenlabs"] },
     { name = "usb-webcam-mcp" },
+    { name = "wifi-cam-mcp", extra = ["transcribe", "transcribe-faster"] },
+    { name = "x-mcp" },
+]
+camera-tapo = [
+    { name = "wifi-cam-mcp" },
+]
+camera-usb = [
+    { name = "usb-webcam-mcp" },
+]
+system-temperature = [
+    { name = "system-temperature-mcp" },
+]
+transcription-faster = [
+    { name = "wifi-cam-mcp", extra = ["transcribe-faster"] },
+]
+transcription-whisper = [
     { name = "wifi-cam-mcp", extra = ["transcribe"] },
+]
+voice-elevenlabs = [
+    { name = "tts-mcp", extra = ["elevenlabs"] },
+]
+voice-voicevox = [
+    { name = "tts-mcp" },
+]
+x = [
     { name = "x-mcp" },
 ]
 
@@ -681,24 +701,25 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agent-grammar", editable = "sociality-mcp/packages/agent-grammar" },
-    { name = "boundary-mcp", editable = "sociality-mcp/packages/boundary-mcp" },
     { name = "desire-system", editable = "desire-system" },
     { name = "individual-kernel-mcp", editable = "consciousness-mcp/packages/individual-kernel-mcp" },
-    { name = "interaction-orchestrator-mcp", editable = "sociality-mcp/packages/interaction-orchestrator-mcp" },
-    { name = "joint-attention-mcp", editable = "sociality-mcp/packages/joint-attention-mcp" },
     { name = "memory-mcp", editable = "memory-mcp" },
-    { name = "relationship-mcp", editable = "sociality-mcp/packages/relationship-mcp" },
-    { name = "self-narrative-mcp", editable = "sociality-mcp/packages/self-narrative-mcp" },
-    { name = "social-core", editable = "sociality-mcp/packages/social-core" },
-    { name = "social-state-mcp", editable = "sociality-mcp/packages/social-state-mcp" },
     { name = "sociality-mcp", editable = "sociality-mcp" },
-    { name = "system-temperature-mcp", editable = "system-temperature-mcp" },
-    { name = "tts-mcp", extras = ["all"], editable = "tts-mcp" },
-    { name = "usb-webcam-mcp", editable = "usb-webcam-mcp" },
-    { name = "wifi-cam-mcp", extras = ["transcribe"], editable = "wifi-cam-mcp" },
-    { name = "x-mcp", editable = "x-mcp" },
+    { name = "system-temperature-mcp", marker = "extra == 'all'", editable = "system-temperature-mcp" },
+    { name = "system-temperature-mcp", marker = "extra == 'system-temperature'", editable = "system-temperature-mcp" },
+    { name = "tts-mcp", marker = "extra == 'voice-voicevox'", editable = "tts-mcp" },
+    { name = "tts-mcp", extras = ["elevenlabs"], marker = "extra == 'all'", editable = "tts-mcp" },
+    { name = "tts-mcp", extras = ["elevenlabs"], marker = "extra == 'voice-elevenlabs'", editable = "tts-mcp" },
+    { name = "usb-webcam-mcp", marker = "extra == 'all'", editable = "usb-webcam-mcp" },
+    { name = "usb-webcam-mcp", marker = "extra == 'camera-usb'", editable = "usb-webcam-mcp" },
+    { name = "wifi-cam-mcp", marker = "extra == 'camera-tapo'", editable = "wifi-cam-mcp" },
+    { name = "wifi-cam-mcp", extras = ["transcribe"], marker = "extra == 'transcription-whisper'", editable = "wifi-cam-mcp" },
+    { name = "wifi-cam-mcp", extras = ["transcribe", "transcribe-faster"], marker = "extra == 'all'", editable = "wifi-cam-mcp" },
+    { name = "wifi-cam-mcp", extras = ["transcribe-faster"], marker = "extra == 'transcription-faster'", editable = "wifi-cam-mcp" },
+    { name = "x-mcp", marker = "extra == 'all'", editable = "x-mcp" },
+    { name = "x-mcp", marker = "extra == 'x'", editable = "x-mcp" },
 ]
+provides-extras = ["camera-usb", "camera-tapo", "transcription-whisper", "transcription-faster", "voice-voicevox", "voice-elevenlabs", "x", "system-temperature", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -954,7 +975,7 @@ wheels = [
 
 [[package]]
 name = "individual-kernel-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "consciousness-mcp/packages/individual-kernel-mcp" }
 dependencies = [
     { name = "agent-grammar" },
@@ -997,7 +1018,7 @@ wheels = [
 
 [[package]]
 name = "interaction-orchestrator-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "sociality-mcp/packages/interaction-orchestrator-mcp" }
 dependencies = [
     { name = "boundary-mcp" },
@@ -1099,7 +1120,7 @@ wheels = [
 
 [[package]]
 name = "joint-attention-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "sociality-mcp/packages/joint-attention-mcp" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
@@ -1332,7 +1353,7 @@ wheels = [
 
 [[package]]
 name = "memory-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "memory-mcp" }
 dependencies = [
     { name = "mcp" },
@@ -2385,7 +2406,7 @@ wheels = [
 
 [[package]]
 name = "relationship-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "sociality-mcp/packages/relationship-mcp" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
@@ -2592,7 +2613,7 @@ wheels = [
 
 [[package]]
 name = "self-narrative-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "sociality-mcp/packages/self-narrative-mcp" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
@@ -2675,10 +2696,11 @@ wheels = [
 
 [[package]]
 name = "social-core"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "sociality-mcp/packages/social-core" }
 dependencies = [
     { name = "pydantic" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
 
 [package.optional-dependencies]
@@ -2694,12 +2716,13 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.3.0" },
+    { name = "tzdata", marker = "sys_platform == 'win32'", specifier = ">=2025.2" },
 ]
 provides-extras = ["dev"]
 
 [[package]]
 name = "social-state-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "sociality-mcp/packages/social-state-mcp" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
@@ -2727,7 +2750,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "sociality-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "sociality-mcp" }
 dependencies = [
     { name = "boundary-mcp" },
@@ -2835,7 +2858,7 @@ wheels = [
 
 [[package]]
 name = "system-temperature-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "system-temperature-mcp" }
 dependencies = [
     { name = "mcp" },
@@ -2991,7 +3014,7 @@ wheels = [
 
 [[package]]
 name = "tts-mcp"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "tts-mcp" }
 dependencies = [
     { name = "mcp" },
@@ -3098,7 +3121,7 @@ wheels = [
 
 [[package]]
 name = "usb-webcam-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "usb-webcam-mcp" }
 dependencies = [
     { name = "mcp" },
@@ -3253,7 +3276,7 @@ wheels = [
 
 [[package]]
 name = "wifi-cam-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "wifi-cam-mcp" }
 dependencies = [
     { name = "httpx" },
@@ -3298,7 +3321,7 @@ provides-extras = ["dev", "transcribe", "transcribe-faster"]
 
 [[package]]
 name = "x-mcp"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "x-mcp" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
