@@ -25,7 +25,7 @@ Windows の音声入力には **DirectShow（`dshow`）** を使う必要があ�
 | 項目 | 要件 / 確認コマンド |
 |---|---|
 | OS | Windows 10 / 11 |
-| Python | 3.10 以上（`python --version`） |
+| Python | 3.13（`python --version`） |
 | uv | `uv --version` |
 | ffmpeg | `Get-Command ffmpeg`（録音に使用） |
 | GPU | 無くても動作する（CUDA が無ければ自動で CPU にフォールバック）。ただし §5-3 参照 |
@@ -41,14 +41,15 @@ winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-a
 
 ## 1. 依存関係のインストール
 
-音声認識は optional extra のため、明示的に指定する。
+リポジトリのルートで unified workspace を同期する。既定構成には
+`openai-whisper` が含まれる。
 
 ```powershell
-# 既定構成（openai-whisper）
-uv --directory "path\to\wifi-cam-mcp" sync --extra transcribe
+cd "path\to\embodied-claude"
+uv sync
 
 # faster-whisper を使う場合
-uv --directory "path\to\wifi-cam-mcp" sync --extra transcribe-faster
+uv sync --all-packages --extra transcribe-faster
 ```
 
 ---
@@ -71,7 +72,7 @@ TRANSCRIBE_MODEL=small
 
 # 録音・撮影の保存先。既定の "/tmp/wifi-cam-mcp" は POSIX 前提のため、
 # Windows ではドライブ直下の \tmp に解決される。明示指定を推奨。
-CAPTURE_DIR=path\to\wifi-cam-mcp\out
+CAPTURE_DIR=path\to\embodied-claude\wifi-cam-mcp\out
 ```
 
 ---
@@ -111,6 +112,9 @@ ffmpeg -list_devices true -f dshow -i dummy
 ---
 
 ## 4. 動作確認
+
+リポジトリのルートで `uv run --package wifi-cam-mcp python` を実行し、
+次のコードを入力する。
 
 ```python
 import time
@@ -240,7 +244,7 @@ GPU なし・2 コアの環境では以下のようになる:
 | 症状 | 原因 / 対処 |
 |---|---|
 | `Unsupported platform for local microphone: Windows` | 本変更の適用前。`MIC_SOURCE=camera` なら回避できる |
-| `ModuleNotFoundError: whisper` | extra 未導入 → §1。extra 名は `transcribe` |
+| `ModuleNotFoundError: whisper` | workspace 未同期 → リポジトリのルートで `uv sync` を実行 |
 | 初回の `listen` だけ極端に遅い | モデルの初回ダウンロード＋import。2 回目以降はキャッシュにより解消 → §5-4 |
 | 録音ファイルが見つからない | `CAPTURE_DIR` 未設定時、既定の `/tmp/wifi-cam-mcp` はドライブ直下の `\tmp` に解決される → §2 |
 | 出力が毎回変わる / 音声と無関係な文字列が出る | `duration` が短すぎる → §5-2。10 秒以上にする |
@@ -252,7 +256,8 @@ GPU なし・2 コアの環境では以下のようになる:
 ## 検証環境
 
 - Windows 11 Pro / Intel Core i5-7300U（2 コア 4 スレッド）/ Intel HD Graphics 620（**CUDA 非対応**）
-- Python 3.12 + uv / ffmpeg 8.1.2 / `torch 2.13.0+cpu`（`cuda_available=False`）
+- Windows 実機: Python 3.12 + uv / ffmpeg 8.1.2 / `torch 2.13.0+cpu`（`cuda_available=False`）
+- unified workspace / CI: Python 3.13
 - `openai-whisper` 20250625 / `faster-whisper` 1.2.1
 - 音声入力: Bluetooth ヘッドセット（DirectShow 経由）および VOICEVOX 合成音声
 - `MIC_SOURCE=local` の録音〜文字起こし、両バックエンド、モデルキャッシュを実機で確認

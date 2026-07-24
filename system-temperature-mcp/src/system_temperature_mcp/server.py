@@ -1,18 +1,21 @@
 """MCP Server for system temperature monitoring - your sense of body temperature."""
 
 import json
+import os
+import re
 import subprocess
 import sys
-from datetime import datetime
+import urllib.request
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
+from urllib.error import URLError
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import psutil
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
-
 
 server = Server("system-temperature-mcp")
 
@@ -136,10 +139,57 @@ def _run_powershell(script: str) -> str:
             capture_output=True,
             text=True,
             timeout=5,
+            check=False,
         )
         return result.stdout.strip()
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         return ""
+
+
+def _get_lhm_webserver_temps() -> list[dict[str, Any]]:
+    """Get temperatures from a running LibreHardwareMonitor/OpenHardwareMonitor
+    "Remote Web Server" (Options -> Remote Web Server -> Run).
+
+    This is the most reliable path on Windows native: it needs no WMI namespace
+    permissions and works whether or not Claude Code runs elevated, as long as
+    LHM/OHM itself runs elevated and serves its JSON tree. The URL defaults to
+    http://localhost:8085/data.json and can be overridden with the
+    SYSTEM_TEMPERATURE_LHM_URL environment variable.
+    """
+    url = os.environ.get(
+        "SYSTEM_TEMPERATURE_LHM_URL", "http://localhost:8085/data.json"
+    )
+    try:
+        with urllib.request.urlopen(url, timeout=2) as resp:
+            data = json.load(resp)
+    except (URLError, OSError, json.JSONDecodeError, ValueError):
+        return []
+
+    temperatures: list[dict[str, Any]] = []
+
+    def walk(node: dict[str, Any]) -> None:
+        text = node.get("Text", "")
+        value = node.get("Value", "")
+        # "Distance to TjMax" is reported in °C but is a headroom margin,
+        # not an actual temperature reading, so skip it.
+        if value and "°C" in value and "Distance to TjMax" not in text:
+            match = re.search(r"-?\d+(?:[.,]\d+)?", value)
+            if match:
+                try:
+                    celsius = float(match.group(0).replace(",", "."))
+                    temperatures.append({
+                        "source": "lhm_webserver",
+                        "name": text or "unknown",
+                        "temperature_celsius": celsius,
+                    })
+                except ValueError:
+                    pass
+        for child in node.get("Children", []):
+            walk(child)
+
+    if isinstance(data, dict):
+        walk(data)
+    return temperatures
 
 
 def _get_hardware_monitor_temps() -> list[dict[str, Any]]:
@@ -206,18 +256,26 @@ def _get_acpi_thermal_temps() -> list[dict[str, Any]]:
 
 
 def get_windows_temperatures() -> list[dict[str, Any]]:
-    """Get temperatures on Windows via WMI/PowerShell.
+    """Get temperatures on Windows via LHM web server, WMI, or ACPI.
 
-    Tries two approaches in order:
-    1. LibreHardwareMonitor / OpenHardwareMonitor WMI namespace (most accurate).
-    2. MSAcpi_ThermalZoneTemperature (basic ACPI zones, no extra software needed).
+    Tries three approaches in order:
+    1. LibreHardwareMonitor / OpenHardwareMonitor "Remote Web Server" JSON
+       (most reliable - no WMI permission issues, works when Claude Code is
+       not elevated as long as LHM/OHM serves data).
+    2. LibreHardwareMonitor / OpenHardwareMonitor WMI namespace.
+    3. MSAcpi_ThermalZoneTemperature (basic ACPI zones, no extra software needed).
     """
     if sys.platform != "win32":
         return []
 
+    temps = _get_lhm_webserver_temps()
+    if temps:
+        return temps
+
     temps = _get_hardware_monitor_temps()
     if temps:
         return temps
+
     return _get_acpi_thermal_temps()
 
 
@@ -248,9 +306,22 @@ def get_all_temperatures() -> dict[str, Any]:
     }
 
 
+def _japan_timezone() -> Any:
+    """Return the Asia/Tokyo timezone, falling back to a fixed UTC+9 offset.
+
+    On Windows native there is no system IANA tzdb, so ZoneInfo relies on the
+    ``tzdata`` package. If it is somehow unavailable we degrade to a fixed
+    +09:00 offset (JST has no DST) instead of crashing.
+    """
+    try:
+        return ZoneInfo("Asia/Tokyo")
+    except ZoneInfoNotFoundError:
+        return timezone(timedelta(hours=9), "JST")
+
+
 def get_current_time() -> str:
     """Get current time in Japan timezone."""
-    jst = ZoneInfo("Asia/Tokyo")
+    jst = _japan_timezone()
     now = datetime.now(jst)
 
     # Format nicely
