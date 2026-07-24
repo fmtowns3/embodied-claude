@@ -24,6 +24,9 @@ Tapo C210などのWiFiカメラをMCP経由で制御して、AIに部屋を見�
 
 ## セットアップ
 
+Windows ネイティブでローカルマイクを使う場合は
+[README_WinNative.md](README_WinNative.md) も参照してください。
+
 ### 1. カメラの初期設定（Tapoアプリ）
 
 1. スマホに「TP-Link Tapo」アプリをインストール

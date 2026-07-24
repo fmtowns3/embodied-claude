@@ -46,6 +46,7 @@ jobs:
           uv run pytest tests -q
           uv run --project "$GITHUB_WORKSPACE" --directory memory-mcp pytest -q
           uv run --project "$GITHUB_WORKSPACE" --directory tts-mcp pytest -q
+          uv run --project "$GITHUB_WORKSPACE" --directory wifi-cam-mcp pytest -q
           uv run --project "$GITHUB_WORKSPACE" --directory desire-system pytest -q
           uv run --project "$GITHUB_WORKSPACE" --directory system-temperature-mcp pytest -q
           uv run --project "$GITHUB_WORKSPACE" --directory consciousness-mcp/packages/individual-kernel-mcp pytest -q
