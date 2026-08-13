@@ -3,7 +3,8 @@
 import asyncio
 import json
 import logging
-from contextlib import asynccontextmanager
+from collections.abc import Awaitable, Callable
+from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,30 @@ from .types import CameraPosition
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+async def _start_http_recall_server(
+    handler: Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]],
+    port: int,
+) -> asyncio.Server | None:
+    """Bind the local HTTP recall endpoint, best effort.
+
+    The port is a shared, machine-wide resource: a second Claude Code window, or a
+    memory-mcp process that outlived its client, may already hold it. Losing that
+    race must not take down the MCP server — the stdio tools work regardless of who
+    owns the HTTP endpoint — so a bind failure is logged and reported as ``None``.
+    """
+    try:
+        server = await asyncio.start_server(handler, "127.0.0.1", port)
+    except OSError as e:
+        logger.warning(
+            f"HTTP recall endpoint unavailable on 127.0.0.1:{port} ({e}). "
+            "Another memory-mcp process is likely holding it; "
+            "MCP tools remain fully functional."
+        )
+        return None
+    logger.info(f"HTTP recall endpoint listening on 127.0.0.1:{port}")
+    return server
 
 
 class MemoryMCPServer:
@@ -1691,20 +1716,22 @@ Date Range:
     async def run(self) -> None:
         """Run the MCP server."""
         async with self.run_context():
-            # Start lightweight HTTP recall server
+            # Start the lightweight HTTP recall server. Binding is best effort;
+            # see _start_http_recall_server for why losing the port is survivable.
             http_port = int(__import__("os").environ.get("MEMORY_HTTP_PORT", "18900"))
-            http_server = await asyncio.start_server(
-                self._handle_http_recall, "127.0.0.1", http_port
+            http_server = await _start_http_recall_server(
+                self._handle_http_recall, http_port
             )
-            logger.info(f"HTTP recall endpoint listening on 127.0.0.1:{http_port}")
 
-            async with http_server:
-                async with stdio_server() as (read_stream, write_stream):
-                    await self._server.run(
-                        read_stream,
-                        write_stream,
-                        self._server.create_initialization_options(),
-                    )
+            async with AsyncExitStack() as stack:
+                if http_server is not None:
+                    await stack.enter_async_context(http_server)
+                read_stream, write_stream = await stack.enter_async_context(stdio_server())
+                await self._server.run(
+                    read_stream,
+                    write_stream,
+                    self._server.create_initialization_options(),
+                )
 
 
 def main() -> None:
