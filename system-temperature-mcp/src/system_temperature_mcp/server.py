@@ -146,6 +146,22 @@ def _run_powershell(script: str) -> str:
         return ""
 
 
+# LHM/OHM reports several *configuration* values in °C alongside real readings:
+# SPD thermal limits on DDR5 DIMMs, NVMe warning/critical thresholds, and the
+# sensor's own resolution. These are constants, not measurements, so including
+# them pins max()/min() to a hardware limit (a DIMM's 85 °C critical limit makes
+# every reading look "hot") and breaks the temperature interpretation. Only
+# newer hardware exposes them, which is why this does not reproduce on older
+# machines.
+_LHM_NON_READINGS = (
+    "Distance to TjMax",       # headroom margin, not a temperature
+    "Limit",                   # Thermal Sensor (Critical) High/Low Limit — SPD
+    "Warning Temperature",     # NVMe SMART threshold
+    "Critical Temperature",    # NVMe SMART threshold
+    "Resolution",              # Temperature Sensor Resolution (e.g. 0.3 °C)
+)
+
+
 def _get_lhm_webserver_temps() -> list[dict[str, Any]]:
     """Get temperatures from a running LibreHardwareMonitor/OpenHardwareMonitor
     "Remote Web Server" (Options -> Remote Web Server -> Run).
@@ -170,9 +186,11 @@ def _get_lhm_webserver_temps() -> list[dict[str, Any]]:
     def walk(node: dict[str, Any]) -> None:
         text = node.get("Text", "")
         value = node.get("Value", "")
-        # "Distance to TjMax" is reported in °C but is a headroom margin,
-        # not an actual temperature reading, so skip it.
-        if value and "°C" in value and "Distance to TjMax" not in text:
+        if (
+            value
+            and "°C" in value
+            and not any(marker in text for marker in _LHM_NON_READINGS)
+        ):
             match = re.search(r"-?\d+(?:[.,]\d+)?", value)
             if match:
                 try:
