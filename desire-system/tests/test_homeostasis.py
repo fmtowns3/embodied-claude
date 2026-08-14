@@ -1,5 +1,6 @@
 """Tests for homeostasis / allostasis extensions to the desire system."""
 
+import importlib
 import json
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -8,6 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import desire_updater
 from desire_updater import (
     DESIRE_CONFIGS,
     DesireState,
@@ -40,9 +42,38 @@ class TestDesireConfig:
         assert "cognitive_load" in DESIRE_CONFIGS
 
     def test_identity_coherence_set_point_is_high(self):
-        """identity_coherence のセットポイントは高い（自分がここねである確信）"""
+        """identity_coherence のセットポイントは高い（自分が自分である確信）"""
         cfg = DESIRE_CONFIGS["identity_coherence"]
         assert cfg.set_point >= 0.8
+
+    def test_identity_coherence_follows_self_name(self, monkeypatch):
+        """identity_coherence は SELF_NAME / SELF_PRONOUN に追従する。
+
+        エージェント名がベタ書きだと、別の名前で運用している個体では
+        キーワードが一致せず、自己同一性の欲求だけが満たされにくくなる。
+        キーワード不一致は例外もログも出さないため、「最近その話題が
+        なかっただけ」と区別がつかない。
+        """
+        monkeypatch.setenv("SELF_NAME", "クロコ")
+        monkeypatch.setenv("SELF_PRONOUN", "わたし")
+        module = importlib.reload(desire_updater)
+        try:
+            cfg = module.DESIRE_CONFIGS["identity_coherence"]
+
+            assert "クロコとして" in cfg.keywords
+            assert "わたしは" in cfg.keywords
+            assert "自分がクロコ" in cfg.keywords
+            assert cfg.label == "自分がクロコである確信"
+
+            # 名前に依存しないキーワードは残す（recall 由来の満足を拾うため）
+            assert "思い出した" in cfg.keywords
+
+            # 別名の痕跡が残っていないこと
+            assert not any("ここね" in kw for kw in cfg.keywords)
+            assert "ここね" not in cfg.label
+        finally:
+            monkeypatch.undo()
+            importlib.reload(desire_updater)
 
     def test_original_desires_preserved(self):
         """既存の4欲求が残っている"""
