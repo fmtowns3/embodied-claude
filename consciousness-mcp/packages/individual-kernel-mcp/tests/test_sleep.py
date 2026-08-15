@@ -185,10 +185,30 @@ class TestBriefingPersistence:
         )
         result = consolidator.run()
         assert path.exists()
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         assert "summary_line" in data
         assert "counterfactual_count" in data
         assert result.briefing_path == str(path)
+
+    def test_briefing_is_written_as_utf8(self, social_db, tmp_path):
+        """summary_line is always Japanese, so the file is never pure ASCII.
+
+        SleepConsolidator pins encoding="utf-8" on the write; nothing asserted it.
+        Reading the raw bytes keeps the on-disk encoding independent of the
+        locale of whoever runs the suite.
+        """
+        path = tmp_path / "morning_briefing.json"
+        store = CounterfactualStore(social_db)
+        consolidator = SleepConsolidator(
+            db=social_db,
+            counterfactual_store=store,
+            briefing_path=path,
+            is_quiet_hours=_quiet_yes,
+            clock=_fixed_clock(),
+        )
+        consolidator.run()
+        data = json.loads(path.read_bytes().decode("utf-8"))
+        assert not data["summary_line"].isascii()
 
     def test_dry_run_does_not_write(self, social_db, tmp_path):
         path = tmp_path / "morning_briefing.json"
@@ -232,7 +252,7 @@ class TestMorningBriefingShape:
             clock=_fixed_clock(),
         )
         consolidator.run()
-        data = json.loads(Path(path).read_text())
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
         # MorningBriefing must be re-constructible from disk JSON
         briefing = MorningBriefing(**data)
         assert briefing.summary_line == data["summary_line"]
@@ -242,4 +262,7 @@ def test_default_briefing_path_is_under_claude_dir():
     """The shipping default lives under ~/.claude/ so autonomous-action.sh can find it."""
     from individual_kernel_mcp.sleep import DEFAULT_BRIEFING_PATH
 
-    assert str(DEFAULT_BRIEFING_PATH).endswith(".claude/morning_briefing.json")
+    assert Path(DEFAULT_BRIEFING_PATH).parts[-2:] == (
+        ".claude",
+        "morning_briefing.json",
+    )
