@@ -62,7 +62,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Write|Edit|NotebookEdit|Bash|mcp__.*",
+        "matcher": "Write|Edit|NotebookEdit|Bash|PowerShell|mcp__.*",
         "hooks": [
           {
             "type": "command",
@@ -83,7 +83,7 @@
     ],
     "PostToolUseFailure": [
       {
-        "matcher": "Write|Edit|NotebookEdit|Bash|mcp__.*",
+        "matcher": "Write|Edit|NotebookEdit|Bash|PowerShell|mcp__.*",
         "hooks": [
           {
             "type": "command",

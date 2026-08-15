@@ -784,6 +784,12 @@ def is_external_tool(tool_name: str, tool_input: dict[str, Any] | None = None) -
         return True
     if tool_name in {"Write", "Edit", "NotebookEdit"}:
         return True
+    # Claude Code exposes PowerShell as a tool of its own on Windows, where it is
+    # the primary shell. There is no _powershell_is_read_only() counterpart yet,
+    # and a wrong read-only verdict would reopen the bypass this branch closes,
+    # so every PowerShell call counts as outward.
+    if tool_name == "PowerShell":
+        return True
     if tool_name == "Bash":
         command = str((tool_input or {}).get("command", ""))
         return not _bash_is_read_only(command)

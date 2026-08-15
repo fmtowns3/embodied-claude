@@ -187,6 +187,21 @@ def test_core_hook_settings_do_not_require_posix_shell_scripts() -> None:
     assert all(".sh" not in json.dumps(hook) for hook in hooks)
 
 
+def test_post_tool_hooks_match_every_shell_the_gate_can_refuse() -> None:
+    """PreToolUse carries no matcher, so it gates every tool. PostToolUse does.
+
+    A tool the gate can refuse but the post hooks never see would leave its
+    intention pending, and the one-outward-action bottleneck then blocks the
+    next one. The two lists have to name the same tools.
+    """
+    for name in (".claude/settings.json", ".claude/settings.example.json"):
+        config = json.loads((ROOT / name).read_text(encoding="utf-8"))
+        for event in ("PostToolUse", "PostToolUseFailure"):
+            for entry in config["hooks"][event]:
+                for tool in ("Write", "Edit", "Bash", "PowerShell"):
+                    assert tool in entry["matcher"], (name, event, tool)
+
+
 def test_ci_uses_the_locked_root_workspace() -> None:
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert 'python-version: "3.13"' in workflow
