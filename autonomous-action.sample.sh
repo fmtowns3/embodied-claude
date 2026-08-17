@@ -348,11 +348,11 @@ ${MORNING_SECTION}${ROUTINE_MODE}
 ${DESIRE_SECTION}
 ## 補足ルール
 - ${TIME_RULE}
-- 人に話しかける、say する、軽く促す前に `get_social_state` → `evaluate_action(action_type=\"say\" または \"nudge_human\")` を通し、許可されないなら黙るか後回しにする
-- X に投稿する前に `get_social_state` → `get_person_model` → `review_social_post` → `evaluate_action(action_type=\"post_tweet\")` を通す
-- 人の発話・依頼・境界・約束を拾ったら `ingest_social_event` と `ingest_interaction` を使って social DB に反映する。明確な境界は `record_boundary`、約束は `create_commitment` を使う
-- 物や人の位置関係をある程度構造化できるときは `ingest_scene_parse` を使う。参照が曖昧なときは `resolve_reference` や `get_current_joint_focus` を使う
-- 一日の節目や余力があるタイミングでは `append_daybook` を使って自己要約を更新する
+- 人に話しかける、say する、軽く促す前に \`get_social_state\` → \`evaluate_action(action_type=\"say\" または \"nudge_human\")\` を通し、許可されないなら黙るか後回しにする
+- X に投稿する前に \`get_social_state\` → \`get_person_model\` → \`review_social_post\` → \`evaluate_action(action_type=\"post_tweet\")\` を通す
+- 人の発話・依頼・境界・約束を拾ったら \`ingest_social_event\` と \`ingest_interaction\` を使って social DB に反映する。明確な境界は \`record_boundary\`、約束は \`create_commitment\` を使う
+- 物や人の位置関係をある程度構造化できるときは \`ingest_scene_parse\` を使う。参照が曖昧なときは \`resolve_reference\` や \`get_current_joint_focus\` を使う
+- 一日の節目や余力があるタイミングでは \`append_daybook\` を使って自己要約を更新する
 - 人がいないことはよくある。一日のうち人がいるのは2時間程度やそれ以下の場合も少なくない
 - 部屋を見るときは see で撮って、予測→観察→記憶照合→保存のサイクルで発見を拾え。朝日や天気の変化、部屋の明るさなど、人がいなくても観察すべきものはある
 - 読書を選択した場合は、ゆっくり読んで、感想をしっかり書き残す。感想は長くなっても良い。読書を味わうこと。読書を味わうとは、予想して、伏線に注目して、感じたことを大切にする。
