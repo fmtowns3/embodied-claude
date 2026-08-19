@@ -1,5 +1,5 @@
 """
-Desire Updater - ここねの自発的な欲求レベルを計算してJSONに保存する。
+Desire Updater - エージェントの自発的な欲求レベルを計算してJSONに保存する。
 
 ChromaDB（memory-mcp）から各欲求に関連する最新記憶のタイムスタンプを取得し、
 「最後に〇〇してから何時間か」を計算して欲求レベル(0.0〜1.0)を算出する。
@@ -50,6 +50,14 @@ DESIRES_PATH = Path(
 # 一緒にいる人の名前（miss_companion 欲求で使う）
 COMPANION_NAME = os.getenv("COMPANION_NAME", "あなた")
 
+# 自分（エージェント）の名前と一人称（identity_coherence 欲求で使う）。
+# COMPANION_NAME と対になる設定。ここを固定名にすると、別の名前で運用している
+# エージェントでは identity_coherence のキーワードが一致せず、自己同一性の欲求
+# だけが満たされにくくなる。しかもキーワード不一致はエラーを出さないため、
+# 「最近その話をしていないだけ」と区別がつかない。
+SELF_NAME = os.getenv("SELF_NAME", "自分")
+SELF_PRONOUN = os.getenv("SELF_PRONOUN", "自分")
+
 # JST timezone
 JST = timezone(timedelta(hours=9))
 
@@ -99,10 +107,10 @@ DESIRE_CONFIGS: dict[str, DesireConfig] = {
         satisfaction_hours=float(os.getenv("DESIRE_IDENTITY_COHERENCE_HOURS", "1.0")),
         set_point=0.9,
         keywords=[
-            "ここねとして", "ウチは", "自分がここね", "記憶を引いた",
-            "recallした", "思い出した",
+            f"{SELF_NAME}として", f"{SELF_PRONOUN}は", f"自分が{SELF_NAME}",
+            "記憶を引いた", "recallした", "思い出した",
         ],
-        label="自分がここねである確信",
+        label=f"自分が{SELF_NAME}である確信",
     ),
     "cognitive_load": DesireConfig(
         satisfaction_hours=float(os.getenv("DESIRE_COGNITIVE_LOAD_HOURS", "1.5")),

@@ -1,5 +1,5 @@
 """
-Desire System MCP Server - ここねの自発的な欲求レベルを提供する。
+Desire System MCP Server - エージェントの自発的な欲求レベルを提供する。
 
 v2: ホメオスタシス/アロスタシス対応
 - 不快度（discomfort）表示
@@ -19,7 +19,13 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from backend import make_default_adapter
-from desire_updater import DESIRE_CONFIGS, compute_desires, save_desires
+from desire_updater import (
+    COMPANION_NAME,
+    DESIRE_CONFIGS,
+    SELF_NAME,
+    compute_desires,
+    save_desires,
+)
 
 # 欲求レベル読み込み元
 # expanduser() for the same reason as in desire_updater.py: .env supplies the
@@ -87,7 +93,7 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="get_desires",
             description=(
-                "Get Kokone's current desire levels and discomfort (homeostasis). "
+                f"Get {SELF_NAME}'s current desire levels and discomfort (homeostasis). "
                 "Discomfort = distance from set point. "
                 "When discomfort >= 0.5: pick ONE bounded action that fits the "
                 "current context (prefer private/non-interruptive during quiet "
@@ -95,7 +101,7 @@ async def list_tools() -> list[Tool]:
                 "per tick. Desires bias attention; they are not a command queue. "
                 "browse_curiosity -> WebSearch something interesting; "
                 "look_outside -> use camera to look outside; "
-                "miss_companion -> talk to コウタ proactively; "
+                f"miss_companion -> talk to {COMPANION_NAME} proactively; "
                 "observe_room -> use camera to observe room; "
                 "identity_coherence -> recall memories to reinforce self-model; "
                 "cognitive_load -> think about or discuss something interesting."
@@ -151,7 +157,7 @@ async def list_tools() -> list[Tool]:
             description=(
                 "Boost a desire level due to novelty/surprise (dopamine/prediction error). "
                 "Call when you feel surprised or encounter unexpected info. "
-                "e.g. コウタ says something unexpected -> boost browse_curiosity; "
+                f"e.g. {COMPANION_NAME} says something unexpected -> boost browse_curiosity; "
                 "camera shows something unusual -> boost observe_room; "
                 "identity feels unstable -> boost identity_coherence. "
                 "Simulates dopamine response to novelty."
