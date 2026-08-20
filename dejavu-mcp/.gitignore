@@ -1,0 +1,22 @@
+# 顔写真。個人情報なので絶対に追跡しない
+/images/
+!/images/.gitkeep
+
+# モデル（再取得できる。合計で数百MB〜）
+/models/
+
+# 仮想環境
+/.venv/
+__pycache__/
+*.pyc
+
+# 実験結果の書き出し先
+/out/
+*.db
+*.npy
+
+# Visual Studio の作業ファイル
+.vs/
+
+# 場所較正用の素材。images/ と同じくリポジトリには入れない
+/PHOTO/
