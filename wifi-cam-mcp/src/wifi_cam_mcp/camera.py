@@ -226,6 +226,31 @@ def _transcribe_with_model(backend: str, model, audio_path: str) -> str:
     return result.get("text", "").strip()
 
 
+async def _transcribe_with_openai_api(model: str, audio_path: str, api_key: str) -> str:
+    """Transcribe an audio file via the OpenAI transcription API.
+
+    Uses httpx (already a core dependency), so this backend needs no extra
+    package. Returns the same shape as the local backends: the transcript text.
+
+    Args:
+        model: OpenAI model id (e.g. "gpt-4o-transcribe", "whisper-1")
+        audio_path: Path to the audio file
+        api_key: OpenAI API key
+    """
+    import httpx
+
+    audio = Path(audio_path).read_bytes()
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        response = await client.post(
+            "https://api.openai.com/v1/audio/transcriptions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            files={"file": (Path(audio_path).name, audio, "audio/wav")},
+            data={"model": model, "language": "ja"},
+        )
+    response.raise_for_status()
+    return response.json().get("text", "").strip()
+
+
 async def _find_dshow_audio_device() -> str:
     """Find the first DirectShow audio device on Windows via ffmpeg.
 
@@ -284,12 +309,14 @@ class TapoCamera:
         mic_device: str | None = None,
         transcribe_backend: str = "openai-whisper",
         transcribe_model: str = "base",
+        openai_api_key: str | None = None,
     ):
         self._config = config
         self._capture_dir = Path(capture_dir)
         self._mic_device = mic_device
         self._transcribe_backend = transcribe_backend
         self._transcribe_model = transcribe_model
+        self._openai_api_key = openai_api_key
         self._lock = asyncio.Lock()
 
         # ONVIF objects (set on connect)
@@ -983,6 +1010,17 @@ class TapoCamera:
             Transcribed text or None if transcription fails
         """
         backend = self._transcribe_backend
+        if backend == "openai-api":
+            # Cloud backend: no local model to load, just POST the audio.
+            if not self._openai_api_key:
+                return "[OPENAI_API_KEY not set. Required for TRANSCRIBE_BACKEND=openai-api]"
+            try:
+                return await _transcribe_with_openai_api(
+                    self._transcribe_model, audio_path, self._openai_api_key
+                )
+            except Exception as e:
+                return f"[Transcription failed: {e!s}]"
+
         if backend == "faster-whisper":
             try:
                 import faster_whisper  # noqa: F401

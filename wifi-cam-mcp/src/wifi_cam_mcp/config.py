@@ -148,8 +148,11 @@ class ServerConfig:
     mic_source: str = "camera"  # "camera" (RTSP) or "local" (PC microphone)
     mic_device: str | None = None  # DirectShow device name for Windows local mic
     transcribe_default: bool = True
-    transcribe_backend: str = "openai-whisper"  # "openai-whisper" or "faster-whisper"
-    transcribe_model: str = "base"  # Whisper model size (tiny/base/small/medium/large)
+    # "openai-whisper" / "faster-whisper" (both local), or "openai-api" (cloud)
+    transcribe_backend: str = "openai-whisper"
+    # Whisper model size (local) or OpenAI model id (openai-api)
+    transcribe_model: str = "base"
+    openai_api_key: str | None = None  # required when transcribe_backend == "openai-api"
 
     @classmethod
     def from_env(cls) -> "ServerConfig":
@@ -158,12 +161,15 @@ class ServerConfig:
         if mic_source not in ("camera", "local"):
             raise ValueError(f"Invalid MIC_SOURCE '{mic_source}'. Must be 'camera' or 'local'.")
         transcribe_backend = os.getenv("TRANSCRIBE_BACKEND", "openai-whisper").lower()
-        if transcribe_backend not in ("openai-whisper", "faster-whisper"):
+        if transcribe_backend not in ("openai-whisper", "faster-whisper", "openai-api"):
             raise ValueError(
-                f"Invalid TRANSCRIBE_BACKEND '{transcribe_backend}'. "
-                "Must be 'openai-whisper' or 'faster-whisper'."
+                f"Invalid TRANSCRIBE_BACKEND '{transcribe_backend}'. Must be "
+                "'openai-whisper', 'faster-whisper', or 'openai-api'."
             )
         capture_dir = os.getenv("CAPTURE_DIR", "").strip() or _default_capture_dir()
+        # TRANSCRIBE_MODEL is a Whisper size for the local backends, or an
+        # OpenAI model id for openai-api, so the default differs per backend.
+        default_model = "gpt-4o-transcribe" if transcribe_backend == "openai-api" else "base"
         return cls(
             name=os.getenv("MCP_SERVER_NAME", "wifi-cam-mcp"),
             version=os.getenv("MCP_SERVER_VERSION", "0.4.6"),
@@ -172,5 +178,6 @@ class ServerConfig:
             mic_device=os.getenv("MIC_DEVICE") or None,
             transcribe_default=_environment_bool("TRANSCRIBE_DEFAULT", True),
             transcribe_backend=transcribe_backend,
-            transcribe_model=os.getenv("TRANSCRIBE_MODEL", "base"),
+            transcribe_model=os.getenv("TRANSCRIBE_MODEL", default_model),
+            openai_api_key=os.getenv("OPENAI_API_KEY") or None,
         )
