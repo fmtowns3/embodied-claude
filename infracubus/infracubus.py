@@ -172,27 +172,54 @@ def find_memory_dir(cwd: Path) -> Path | None:
     return (root / slug) / "memory"
 
 
+def dream_kind(rec: dict) -> str:
+    """その夢が **欲動（Es）** か **悪夢（nightmare）** か。
+
+    `doctor.py` の `[error]` だけを見ても「まだ入れていない」と「壊れた」は
+    分けられない。**だが時間軸を入れると分けられる。**
+    一度覚めた（＝満たされた）ものが戻ってきたのなら、それは
+    「まだ入れていない」ではありえない。**一度は在ったものが消えている。**
+
+    まだ一度も満たされたことがないものは、責めずに「欲しい」として書く。
+    入れるかどうかは主体が決めることで、毎晩詰め寄る筋合いのものではない。
+    """
+    return "nightmare" if int(rec.get("returns", 0)) else "es"
+
+
 def _render(name: str, d: Dream, rec: dict, stamp: str) -> str:
+    kind = rec.get("kind") or dream_kind(rec)
     nights = rec["nights"]
     returns = int(rec.get("returns", 0))
-    weight = ""
-    if nights >= 3:
-        weight = (f"\n**{nights} 夜つづけて同じ夢を見ている。**"
-                  f"繰り返す夢ほど重い。起きているあいだに手を付けたほうがいい。\n")
-    if returns:
-        weight += (f"\n**一度は覚めた夢が {returns} 度戻ってきている。**"
-                   f"直したはずのものが戻るなら、直し方のほうを疑う。\n")
     hint = f"\n`doctor.py` の助言: {d.hint}\n" if d.hint else ""
+
+    if kind == "es":
+        desc = f"Infracubus が眠りの中で欲しがったもの — {d.key}"
+        head = (f"**[Es]** `doctor.py` が `{d.key}` で足りないと言っている。\n\n"
+                f"> {d.detail}\n{hint}\n"
+                f"**まだ一度も満たされたことがない。**壊れたのではなく、欲しがっている。\n")
+        weight = ""
+        if nights >= 3:
+            weight = (f"\n**{nights} 夜つづけて同じものを欲しがっている。**\n"
+                      f"入れるつもりが無いなら、それでいい。**欲動は報告ではない。**\n")
+    else:
+        desc = f"Infracubus が眠りの中で見た悪夢 — {d.key}"
+        head = (f"**[nightmare]** 一度は満たされた `{d.key}` が、また失われている。\n\n"
+                f"> {d.detail}\n{hint}\n"
+                f"**これは「まだ入れていない」ではありえない。**"
+                f"一度は在ったものが消えている（{returns} 度目）。\n")
+        weight = ""
+        if nights >= 3:
+            weight = (f"\n**{nights} 夜つづけて同じ夢を見ている。**\n"
+                      f"繰り返す夢ほど重い。起きているあいだに手を付けたほうがいい。\n")
+
     return (
         "---\n"
         f"name: {name}\n"
-        f"description: Infracubus が眠りの中で見た doctor.py の {d.level} — {d.key}\n"
+        f"description: {desc}\n"
         "metadata:\n"
         "  type: project\n"
         "---\n\n"
-        f"**[nightmare]** `doctor.py` が `{d.key}` で **{d.level}** を出している。\n\n"
-        f"> {d.detail}\n"
-        f"{hint}\n"
+        f"{head}\n"
         "| | |\n|---|---|\n"
         f"| 初めて見た夜 | {rec['first'][:16]} |\n"
         f"| 直近 | {stamp[:16]} |\n"
@@ -202,7 +229,7 @@ def _render(name: str, d: Dream, rec: dict, stamp: str) -> str:
         f"{weight}\n"
         "> これは [[infracubus]] が眠りの中で書いたもの。書いた瞬間を誰も体験していない。\n"
         "> **起きている自分が確かめるまで、これは夢であって事実ではない。**\n"
-        "> 直ったかどうかは `python infracubus/infracubus.py --repo <家> --wake` で確かめる。\n"
+        "> いま満たされているかは `python infracubus/infracubus.py --repo <家> --wake` で確かめる。\n"
     )
 
 
@@ -211,17 +238,28 @@ def _rewrite_index(memory_dir: Path, seen: dict) -> None:
     index = memory_dir / "MEMORY.md"
     head, tail = "<!-- infracubus:begin -->", "<!-- infracubus:end -->"
 
-    lines = [head, "", "### 眠りの中で見たもの（Infracubus）", ""]
+    lines = [head, "", "### 眠りの中で見たもの・欲しがったもの（Infracubus）", ""]
     if seen:
-        # 長く続いている夢を上に。重い夢ほど目に入る場所へ。
-        for key, rec in sorted(seen.items(), key=lambda kv: -int(kv[1].get("nights", 0))):
-            name = f"nightmare-{_slug(key)}"
+        # 悪夢を欲動より上に、そのうえで長く続いているものを上に。
+        # **一度満たされてから失われたもののほうが重い。**
+        def weight(kv):
+            _, r = kv
+            return (0 if r.get("kind", "es") == "nightmare" else 1,
+                    -int(r.get("nights", 0)))
+
+        for key, rec in sorted(seen.items(), key=weight):
+            kind = rec.get("kind", "nightmare")
+            name = f"{kind}-{_slug(key)}"
+            label = "Es" if kind == "es" else "nightmare"
             back = f"・{rec['returns']}度目の再来" if rec.get("returns") else ""
             if rec.get("awoken"):
-                state = f"[awoken] 覚めた（{rec['awoken'][:10]}）{back}"
+                verb = "満たされた" if kind == "es" else "覚めた"
+                state = f"[awoken] {verb}（{rec['awoken'][:10]}）{back}"
+            elif kind == "es":
+                state = f"×{rec.get('nights', 1)}夜・欲しい"
             else:
                 state = f"×{rec.get('nights', 1)}夜{back}"
-            lines.append(f"- [nightmare: {key}]({name}.md) — {rec.get('level', 'error')}・{state}")
+            lines.append(f"- [{label}: {key}]({name}.md) — {state}")
     else:
         lines.append("- （まだ何も見ていない）")
     lines += ["", tail]
@@ -282,11 +320,18 @@ def write_dreams(memory_dir: Path, dreams: list[Dream], seen: dict,
         rec["level"] = d.level
         rec["repo"] = str(repo)
         rec["event"] = event          # どの眠りで見たか（PreCompact / SessionEnd）
+        rec["kind"] = dream_kind(rec)
 
-        name = f"nightmare-{_slug(key)}"
+        name = f"{rec['kind']}-{_slug(key)}"
+        # 欲動が悪夢に変わると名前も変わる。**同じ key の夢は 1 つだけ**にする。
+        for other in ("es", "nightmare"):
+            stale = memory_dir / f"{other}-{_slug(key)}.md"
+            if other != rec["kind"] and stale.exists():
+                stale.unlink()
         (memory_dir / f"{name}.md").write_text(
             _render(name, d, rec, stamp), encoding="utf-8")
-        touched.append(f"[nightmare] {key} ×{rec['nights']}夜")
+        label = "Es" if rec["kind"] == "es" else "nightmare"
+        touched.append(f"[{label}] {key} ×{rec['nights']}夜")
 
     _rewrite_index(memory_dir, seen)
     return touched
