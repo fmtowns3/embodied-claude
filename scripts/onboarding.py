@@ -127,6 +127,27 @@ X_REQUIRED_ENVIRONMENT = (
     "X_ACCESS_TOKEN_SECRET",
 )
 
+# Persona and quiet-hours settings (#135). None is required and every server
+# has a neutral default, so these are only carried into the generated config
+# when the environment setup runs under already sets them; setup never invents
+# a name for anyone.
+PERSONA_OPTIONAL_ENVIRONMENT = (
+    "COMPANION_NAME",
+    "COMPANION_ID",
+    "SELF_NAME",
+    "SELF_PRONOUN",
+)
+QUIET_HOURS_OPTIONAL_ENVIRONMENT = (
+    "DESIRE_TIMEZONE",
+    "DESIRE_NIGHT_START",
+    "DESIRE_NIGHT_END",
+    "DESIRE_DAWN_END",
+)
+SYSTEM_TEMPERATURE_OPTIONAL_ENVIRONMENT = (
+    "SYSTEM_TEMPERATURE_TONE",
+    "SYSTEM_TEMPERATURE_TIMEZONE",
+)
+
 # Deliberately fake values for --all. They keep the `changeme-` marker that
 # is_placeholder_value() rejects, so a demo config announces itself as one
 # rather than passing for a working setup.
@@ -265,24 +286,40 @@ def build_mcp_config(
         if selection.embedding_model == "small"
         else BASE_EMBEDDING_MODEL
     )
+    persona_environment = _selected_environment(
+        environment, (), PERSONA_OPTIONAL_ENVIRONMENT
+    )
+    quiet_hours_environment = _selected_environment(
+        environment, (), QUIET_HOURS_OPTIONAL_ENVIRONMENT
+    )
     # Operator overrides are pinned into every server that reads them, so the
     # readers cannot disagree about which database or port is meant.
     memory_environment = {"MEMORY_EMBEDDING_MODEL": embedding_model}
     memory_environment.update(
         _selected_environment(environment, (), ("MEMORY_HTTP_PORT",))
     )
+    memory_environment.update(persona_environment)
     servers: dict[str, dict[str, Any]] = {
         "memory": SERVER_SPECS["memory"].command(memory_environment),
-        "desire-system": SERVER_SPECS["desire-system"].command(),
+        "desire-system": SERVER_SPECS["desire-system"].command(
+            {**persona_environment, **quiet_hours_environment}
+        ),
         "sociality": SERVER_SPECS["sociality"].command(
-            _selected_environment(environment, (), ("SOCIAL_DB_PATH",))
+            {
+                **_selected_environment(environment, (), ("SOCIAL_DB_PATH",)),
+                **persona_environment,
+            }
         ),
         "individual-kernel": SERVER_SPECS["individual-kernel"].command(
-            _selected_environment(
-                environment,
-                (),
-                INDIVIDUAL_KERNEL_OPTIONAL_ENVIRONMENT,
-            )
+            {
+                **_selected_environment(
+                    environment,
+                    (),
+                    INDIVIDUAL_KERNEL_OPTIONAL_ENVIRONMENT,
+                ),
+                **persona_environment,
+                **quiet_hours_environment,
+            }
         ),
     }
 
@@ -339,7 +376,11 @@ def build_mcp_config(
         )
 
     if selection.system_temperature:
-        servers["system-temperature"] = SERVER_SPECS["system-temperature"].command()
+        servers["system-temperature"] = SERVER_SPECS["system-temperature"].command(
+            _selected_environment(
+                environment, (), SYSTEM_TEMPERATURE_OPTIONAL_ENVIRONMENT
+            )
+        )
 
     return {"mcpServers": servers}
 

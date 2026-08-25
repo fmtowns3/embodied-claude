@@ -10,6 +10,15 @@ with each other and with the implementation: the tool description promised
 depth, the config silently ignored one of its own variables, and the README
 listed tools by names that no longer exist.
 
+A contributor running the servers under a different agent, in a different
+time zone, found the code still assumed one particular household (#135,
+fmtowns3). None of it failed. The desire updater ran its "night" in someone
+else's afternoon, the thermometer answered in a dialect the agent did not
+speak, a successful post came back with a link to another account's timeline,
+and the social tools opened every tick on a `person_id` nobody in the room
+answered to. Each value was a fact about one deployment, left where the code
+made it look like a fact about the system.
+
 A Windows install (#140, reported by fmtowns3) turned up four ways a heartbeat
 could run with something missing and say nothing: the MCP servers were never
 approved for `claude -p`, the memory recall port had nobody listening, the
@@ -126,6 +135,15 @@ and its key had not been issued (#137, reported by fmtowns3).
   that the hooks invoke `uv run --directory ${CLAUDE_PROJECT_DIR}`, so firing
   them with a foreign project root leaves a `.venv` there -- something `uv`
   does before any hook code runs, so it is documented rather than prevented.
+- system-temperature: `_run_powershell` decodes with the OEM code page on
+  Windows (`encoding="oem"`, with `errors="replace"`). PowerShell 5.1 writes
+  OEM while bare `text=True` reads the ANSI code page -- or UTF-8 under
+  `PYTHONUTF8=1` -- and a decode failure inside subprocess's reader thread
+  leaves `returncode=0` with `stdout=None`, so the following `strip()` raised
+  an `AttributeError` the function's own contract says cannot happen. On a
+  Japanese host both code pages are 932 and it happened to line up; where they
+  differ the output mojibakes silently instead. Found, measured and patched by
+  fmtowns3 on this PR.
 
 ### Changed
 
@@ -137,6 +155,32 @@ and its key had not been issued (#137, reported by fmtowns3).
 - hooks: the `hearing-daemon.py` stub points at where hearing actually went,
   `lifemate-ai/embodied-codex` -> `hearing/`, instead of a directory that is
   not in this repository.
+- desire-system, individual-kernel: the allostatic quiet hours read
+  `DESIRE_TIMEZONE` (IANA name or `+09:00`), `DESIRE_NIGHT_START`,
+  `DESIRE_NIGHT_END` and `DESIRE_DAWN_END` instead of hardcoding JST and
+  0-5 / 5-7. Defaults keep the previous behaviour; a band whose end is before
+  its start wraps past midnight, since a night-shift household's night does.
+  Both projections of the same need now read the same four variables, so they
+  cannot disagree about when night is. The `miss_kouta` spec the kernel
+  carried was a guess that nothing ever emitted, and is gone.
+- system-temperature: `SYSTEM_TEMPERATURE_TONE` selects between the original
+  Kansai phrasing (default) and a neutral one; both are plain tables keyed by
+  the same band names, so a third voice is a one-table addition. Every reply
+  also ends with a structured line -- `level=comfortable max_celsius=52.0`,
+  `iso=... part_of_day=morning` -- so an agent with its own voice can ignore the
+  sentence altogether. `SYSTEM_TEMPERATURE_TIMEZONE` moves the clock.
+- x-mcp: `post_tweet` returns `https://x.com/i/status/<id>`, which resolves for
+  whichever account actually posted, and its description no longer names one.
+- memory, sociality, individual-kernel: the default companion is
+  `COMPANION_NAME` (display name, shared with desire-system) and `COMPANION_ID`
+  (the `person_id` used by the social substrate and the kernel's hooks); the
+  primary-companion response contract is keyed on the latter rather than on a
+  literal. `get_self_summary` names the agent from `SELF_NAME`. All defaults
+  are neutral; this project's own values live in the `.env.example` files, and
+  `scripts/setup.py` carries these variables into the generated config only
+  when they are already set.
+- desire-system: the two "desires.json not found" messages are operator-facing
+  errors and now read as such, in neutral Japanese.
 
 ## [0.4.6] - 2026-07-31
 
