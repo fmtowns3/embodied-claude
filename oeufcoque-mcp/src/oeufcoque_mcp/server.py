@@ -55,11 +55,15 @@ mcp = MCPServer(
     version="0.1.0",
     instructions=(
         "A hand that moves the mouse on this machine. It has no eyes: it takes "
-        "screen coordinates and cannot tell you what is at them. Pair it with "
-        "something that can see. Coordinates are physical screen pixels on the "
-        "virtual desktop, which may start at a negative origin on multi-monitor "
-        "setups; call mouse_state to find out. Movement is deliberately unhurried "
-        "-- a long move takes the better part of a second."
+        "screen coordinates and cannot tell you what is at them. To decide where "
+        "to aim, capture the screen to an image and look at that yourself -- no "
+        "separate vision service is involved. Capture again rather than trusting "
+        "an earlier one, because the screen changes between looking and moving, "
+        "and this hand will happily click whatever has taken that spot since. "
+        "Coordinates are physical screen pixels on the virtual desktop, which may "
+        "start at a negative origin on multi-monitor setups; call mouse_state to "
+        "find out. Movement is deliberately unhurried -- a long move takes the "
+        "better part of a second."
     ),
 )
 
