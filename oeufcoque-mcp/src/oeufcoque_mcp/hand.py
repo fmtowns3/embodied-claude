@@ -37,7 +37,12 @@ MIN_DISTANCE = 5.0  # below this, teleport; a curve would be noise
 CONTROL_OFFSET = (0.10, 0.25)  # bulge, as a fraction of the distance
 PIXELS_PER_STEP = 12
 MIN_STEPS = 25
-STEP_DELAY = (0.008, 0.012)  # seconds between waypoints
+# Seconds between waypoints. Measured caveat: on Windows the default timer
+# resolution is about 15.6ms, and every value in this range rounds up to it, so
+# the intended variation is currently flattened and a step costs ~15.6ms. The
+# spatial jitter still varies; this one does not. Widening the range to straddle
+# a tick boundary, or asking for a finer resolution, would bring it back.
+STEP_DELAY = (0.008, 0.012)
 JITTER = 1.5  # peak hand-shake in pixels, decaying to zero at the target
 JITTER_STOPS_BEFORE_END = 3  # last few steps are steady, like a real approach
 
