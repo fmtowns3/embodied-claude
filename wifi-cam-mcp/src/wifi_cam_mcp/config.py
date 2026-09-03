@@ -169,7 +169,20 @@ class ServerConfig:
         capture_dir = os.getenv("CAPTURE_DIR", "").strip() or _default_capture_dir()
         # TRANSCRIBE_MODEL is a Whisper size for the local backends, or an
         # OpenAI model id for openai-api, so the default differs per backend.
-        default_model = "gpt-4o-transcribe" if transcribe_backend == "openai-api" else "base"
+        #
+        # The openai-api default is whisper-1, not gpt-4o-transcribe, because
+        # MIC_SOURCE defaults to the camera and a Tapo RTSP audio track is
+        # pcm_alaw 8000 Hz. Measured on that band, gpt-4o-transcribe alters the
+        # first mora of a Japanese proper noun (a voiced bilabial stop comes
+        # back as a nasal) while whisper-1 keeps it. One mora is not a slightly
+        # worse transcript here: the sociality layer keys on proper nouns, so a
+        # name that arrives one mora off is a different person. Nothing reports
+        # it either; the transcript comes back looking like a transcript.
+        #
+        # On wideband audio (MIC_SOURCE=local, a PC microphone) gpt-4o-transcribe
+        # is both more accurate and much faster; set TRANSCRIBE_MODEL explicitly
+        # in that case.
+        default_model = "whisper-1" if transcribe_backend == "openai-api" else "base"
         return cls(
             name=os.getenv("MCP_SERVER_NAME", "wifi-cam-mcp"),
             version=os.getenv("MCP_SERVER_VERSION", "0.4.6"),

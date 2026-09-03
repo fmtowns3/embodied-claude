@@ -32,6 +32,38 @@ def test_invalid_transcription_default_is_rejected(
         ServerConfig.from_env()
 
 
+def test_openai_api_backend_defaults_to_whisper_1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The default audio source is the camera, and its RTSP track is 8 kHz.
+
+    gpt-4o-transcribe alters the first mora of a proper noun on that band;
+    whisper-1 keeps it. Pin the default so the camera path stays safe.
+    """
+    monkeypatch.setenv("TRANSCRIBE_BACKEND", "openai-api")
+    monkeypatch.delenv("TRANSCRIBE_MODEL", raising=False)
+
+    assert ServerConfig.from_env().transcribe_model == "whisper-1"
+
+
+def test_local_backends_still_default_to_base(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TRANSCRIBE_BACKEND", "faster-whisper")
+    monkeypatch.delenv("TRANSCRIBE_MODEL", raising=False)
+
+    assert ServerConfig.from_env().transcribe_model == "base"
+
+
+def test_transcribe_model_overrides_the_per_backend_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TRANSCRIBE_BACKEND", "openai-api")
+    monkeypatch.setenv("TRANSCRIBE_MODEL", "gpt-4o-transcribe")
+
+    assert ServerConfig.from_env().transcribe_model == "gpt-4o-transcribe"
+
+
 def test_capture_directory_uses_platform_temp_by_default(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
