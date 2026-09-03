@@ -50,11 +50,10 @@ Useful payload fields include:
 
 ```json
 {
-  "kind": "response",
+  "kind": "agent_response",
   "summary": "Answered the setup question and asked for one diagnostic result.",
   "person_id": "kouta",
-  "channel": "chat",
-  "felt_state": "attentive and uncertain about the Windows process state",
+  "felt_state": {"attentive": 0.8, "uncertain": 0.5},
   "desires_before": {"help": 0.7},
   "desires_after": {"help": 0.3},
   "related_event_ids": [],
@@ -62,9 +61,12 @@ Useful payload fields include:
 }
 ```
 
-The exact schema is validated by `RecordAgentExperienceInput`. Common kinds
-include responses, autonomous actions, boundary respect, desire satisfaction,
-user corrections, and open-loop progress.
+The exact schema is validated by `RecordAgentExperienceInput`. `kind` is an
+`ExperienceKind` literal, so the value has to be one of the names the type
+lists -- `agent_response`, not `response`. `felt_state` is a mapping, not a
+sentence. There is no `channel` field; the model is configured with
+`extra="ignore"`, so an unknown key is dropped without an error and the
+information it carried is simply lost.
 
 These records are stored in `agent_experiences`. The next
 `compose_interaction_context_tool` reads recent rows so past actions constrain
