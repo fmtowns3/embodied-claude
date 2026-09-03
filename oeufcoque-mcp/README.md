@@ -1,4 +1,4 @@
-# oeufcoque-mcp
+# oeufcoque
 
 マウスを動かす手を、MCP サーバーにしたものです。**目はありません。**
 
