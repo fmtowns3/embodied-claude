@@ -39,6 +39,23 @@ point at it:
   installed, and merely notes their absence before that.
 - This page exists.
 
+## What the script needs on PATH
+
+`autonomous-action.sh` shells out to two commands that nothing else in the
+repository requires. Neither absence stops the heartbeat, and only one of the
+four call sites says anything:
+
+| Command | Used for | If it is missing |
+|---|---|---|
+| `jq` | Collecting `permissions.allow` out of `.claude/settings*.json` | `ALLOWED_TOOLS` comes back empty, `--allowedTools` is not passed to `claude -p` at all, and the `--- ALLOWED_TOOLS ---` block in the log is empty |
+| `jq` | Reading `.session_id` out of the result JSON | The session file is not updated, so the next heartbeat starts a new session instead of resuming |
+| `bun` | `scripts/desire-tick.ts` | stderr is captured and logged as `[欲望エラー]` -- **the one that says so** |
+| `bun` | `scripts/interoception.ts` | stderr goes to `/dev/null`; the interoception line is simply absent |
+
+The session one is the quiet one. Nothing in the log distinguishes "resumed the
+previous session" from "started a fresh one because `jq` was not there", and a
+heartbeat that never resumes looks like a heartbeat with a short memory.
+
 ## Templates
 
 Minimal, neutral starting points are in `examples/`:

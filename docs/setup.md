@@ -11,6 +11,11 @@ individual package directories or create package-local `.env` files.
 - Claude Code
 - Network access for the first workspace sync and memory model download
 
+The optional autonomous heartbeat needs two more on `PATH`: `jq` and
+[`bun`](https://bun.sh/). Neither is required for anything else, and
+`autonomous-action.sh` degrades quietly without them -- see
+[Autonomous Prompt Files](./autonomous-files.md).
+
 The workspace requires Python 3.13. `uv` can install and select it
 automatically.
 
@@ -141,6 +146,32 @@ download:
 ```
 
 The first memory operation will download the model instead.
+
+### The server takes tens of seconds to start
+
+`memory-mcp` warms the embedding model before it answers anything
+(`MemoryStore.warmup()`, called during startup). Measured on `b4ded53`, Windows
+11, with the model already on disk:
+
+```text
+import         0.6 s
+warmup()      20.3 s        intfloat/multilingual-e5-base
+```
+
+The smaller default model is quicker, and the first run is slower still because
+the model has to be fetched. Either way this is longer than a short client-side
+startup timeout allows.
+
+If `memory` is missing from the server list and nothing in the logs explains
+why, raise the startup timeout before looking for a configuration error:
+
+```bash
+MCP_TIMEOUT=120000   # milliseconds
+```
+
+A server that timed out during startup is skipped, not reported. Sessions
+continue without memory, which looks like a working setup that never recalls
+anything.
 
 ## Optional Capabilities
 
@@ -340,6 +371,30 @@ Git.
 Setup does not merge unknown custom MCP servers into the generated profile.
 Keep a manual copy or re-add custom entries after generation. The doctor
 reports unknown entries as warnings and does not modify them.
+
+### Adding a server: the tool's name decides whether it is gated
+
+`is_external_tool` (`individual_kernel_mcp/agency.py`) classifies every
+`mcp__`-prefixed call as an outward act **unless the name contains one of a
+small set of read-only fragments** -- `__get_`, `__query_`, `__list_`,
+`__search_`, `__read_`, `__see`, `__capture`, and a few more. An outward act
+needs a matching `propose_field_action` before the PreToolUse hook will allow
+it.
+
+The classifier receives the tool name and its input, and nothing else. A server
+that declares `ToolAnnotations(readOnlyHint=True)` is not consulted: the
+annotation cannot reach the function, so the **name** has to carry it.
+
+The failure is quiet and points the wrong way. A tool that changes nothing --
+the one worth calling freely, right before acting -- is the one that gets
+gated, because naming it symmetrically with its neighbours (`x_state` beside
+`x_move`, `x_click`) puts it on the outward side. Renaming it `get_x_state` is
+enough.
+
+Defaulting unknown names to outward is the safe direction, and it is why this
+is a naming note rather than a bug. But it is only discoverable by reading
+`agency.py` or by measuring, so: check your tool names against that list before
+wiring a new server in.
 
 ### `env` blocks override the inherited environment
 

@@ -108,6 +108,39 @@ The command respects the flag: with `organism_daemon = false` it returns
 `{"ran": false}` and touches nothing, so the entry can be installed before the
 flag is flipped and will simply idle until it is.
 
+On Windows the equivalent is Task Scheduler, and both of the crontab lessons
+apply harder, because a scheduled task starts with an even sparser `PATH` than
+cron. `schtasks /TR` also cannot carry the redirection, so the command goes in
+a one-line wrapper:
+
+```bat
+@echo off
+set "UV="
+for /f "delims=" %%I in ('where uv 2^>nul') do if not defined UV set "UV=%%I"
+if not defined UV if exist "%USERPROFILE%\.local\bin\uv.exe" set "UV=%USERPROFILE%\.local\bin\uv.exe"
+if not defined UV exit /b 3
+set "PYTHONIOENCODING=utf-8"
+"%UV%" run --directory "C:\path\to\embodied-claude" efpf-hook organism-step >> "%~dp0organism.log" 2>&1
+```
+
+```bat
+schtasks /Create /F /TN "EmbodiedClaude-Organism" ^
+  /TR "\"C:\path\to\run-organism.cmd\"" /SC MINUTE /MO 15 /RU "%USERNAME%" /IT
+```
+
+Three things this shape is buying, measured on Windows 11:
+
+- `where uv` first, with an explicit fallback: `uv` installs to
+  `%USERPROFILE%\.local\bin`, which a scheduled task does not have.
+- `PYTHONIOENCODING=utf-8`: the task runs under the OEM code page, and a
+  non-ASCII byte in the output otherwise stops the write, not just the display.
+- The redirection is written **before** the exit code in any `echo` that reports
+  it. `echo exit=%RC%>>"%LOG%"` reads the digit before `>>` as a stream handle
+  and the line vanishes.
+
+Registering a task and having it run are different things. Run it once by hand
+(`schtasks /Run /TN ...`) and read the log before trusting the schedule.
+
 ## Why the flag still ships off
 
 Unlike the flags in #111, the blocker here is not evidence -- the measurement
