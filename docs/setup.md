@@ -11,6 +11,11 @@ individual package directories or create package-local `.env` files.
 - Claude Code
 - Network access for the first workspace sync and memory model download
 
+The optional autonomous heartbeat needs two more on `PATH`: `jq` and
+[`bun`](https://bun.sh/). Neither is required for anything else, and
+`autonomous-action.sh` degrades quietly without them -- see
+[Autonomous Prompt Files](./autonomous-files.md).
+
 The workspace requires Python 3.13. `uv` can install and select it
 automatically.
 
