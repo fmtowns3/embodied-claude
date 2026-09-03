@@ -372,6 +372,30 @@ Setup does not merge unknown custom MCP servers into the generated profile.
 Keep a manual copy or re-add custom entries after generation. The doctor
 reports unknown entries as warnings and does not modify them.
 
+### Adding a server: the tool's name decides whether it is gated
+
+`is_external_tool` (`individual_kernel_mcp/agency.py`) classifies every
+`mcp__`-prefixed call as an outward act **unless the name contains one of a
+small set of read-only fragments** -- `__get_`, `__query_`, `__list_`,
+`__search_`, `__read_`, `__see`, `__capture`, and a few more. An outward act
+needs a matching `propose_field_action` before the PreToolUse hook will allow
+it.
+
+The classifier receives the tool name and its input, and nothing else. A server
+that declares `ToolAnnotations(readOnlyHint=True)` is not consulted: the
+annotation cannot reach the function, so the **name** has to carry it.
+
+The failure is quiet and points the wrong way. A tool that changes nothing --
+the one worth calling freely, right before acting -- is the one that gets
+gated, because naming it symmetrically with its neighbours (`x_state` beside
+`x_move`, `x_click`) puts it on the outward side. Renaming it `get_x_state` is
+enough.
+
+Defaulting unknown names to outward is the safe direction, and it is why this
+is a naming note rather than a bug. But it is only discoverable by reading
+`agency.py` or by measuring, so: check your tool names against that list before
+wiring a new server in.
+
 ### `env` blocks override the inherited environment
 
 A value in a server's `env` block wins over whatever the parent process
