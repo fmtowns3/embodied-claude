@@ -256,7 +256,7 @@ file/network side effect は committed field と matching intention がない限
 
 | ツール | パラメータ | 説明 |
 |--------|-----------|------|
-| `record_counterfactual` | payload | 拒否した代替行為を typed record で残す（source ∈ boundary_deny / attention_lost_bid / deliberate_choice / policy / ignition_failed）。evidence_type は Phase 1 EvidenceType を再利用 |
+| `record_counterfactual` | payload | 拒否した代替行為を typed record で残す（source ∈ boundary_deny / attention_lost_bid / deliberate_choice / policy / ignition_failed）。evidence_type ∈ observed / inferred / remembered / heard / assumed（Phase 1 EvidenceType の再利用） |
 | `query_counterfactuals` | since?, source?, tick_id?, person_id?, limit? | 直近の counterfactual を返す |
 | `sleep_consolidate` | force?, dry_run? | quiet hours で morning_briefing.json を書き出す scheduler glue |
 | `record_tick_frame` | payload | per-tick の ConsciousFrame を保存。winning_memory_ids / dominant_desire / prediction_error / chosen_action_ref など FK だけ持つ |
