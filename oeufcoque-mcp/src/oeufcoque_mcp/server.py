@@ -61,9 +61,9 @@ mcp = MCPServer(
         "an earlier one, because the screen changes between looking and moving, "
         "and this hand will happily click whatever has taken that spot since. "
         "Coordinates are physical screen pixels on the virtual desktop, which may "
-        "start at a negative origin on multi-monitor setups; call mouse_state to "
-        "find out. Movement is deliberately unhurried -- a long move takes the "
-        "better part of a second."
+        "start at a negative origin on multi-monitor setups; call "
+        "get_mouse_state to find out. Movement is deliberately unhurried -- a "
+        "long move takes the better part of a second."
     ),
 )
 
@@ -106,7 +106,7 @@ def _require_hand() -> Hand:
         "before moving, or to check what the hand ended up holding."
     ),
 )
-def mouse_state() -> dict[str, Any]:
+def get_mouse_state() -> dict[str, Any]:
     if _hand is None:
         raise ToolError("Oeufcoque did not start correctly; see its stderr log.")
     with _anticipated():
@@ -236,7 +236,7 @@ def main() -> None:
         if not _have_hand:
             log.warning(
                 "another Oeufcoque process holds the cursor; "
-                "starting read-only so mouse_state still answers"
+                "starting read-only so get_mouse_state still answers"
             )
 
     log.info(
