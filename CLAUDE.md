@@ -31,7 +31,7 @@ embodied-claude/
 ├── memory-mcp/            # 長期記憶システム（Python）
 │   └── src/memory_mcp/
 │       ├── server.py      # MCP サーバー実装
-│       ├── memory.py      # ChromaDB 操作
+│       ├── memory.py      # 記憶ストア操作（SQLite + numpy）
 │       ├── types.py       # 型定義（Emotion, Category）
 │       └── config.py      # 設定管理
 │
@@ -443,7 +443,7 @@ tts-mcp と組み合わせることで**完全な音声対話**が実現する�
 - [go2rtc](https://github.com/AlexxIT/go2rtc) - RTSPストリーム中継・オーディオバックチャンネル
 - [claude-code-webui](https://github.com/sugyan/claude-code-webui) - Claude Code の Web UI
 - [Tailscale](https://tailscale.com/) - メッシュ VPN
-- [ChromaDB](https://www.trychroma.com/) - ベクトルデータベース
+- [sentence-transformers](https://www.sbert.net/) - 埋め込みモデル（記憶の検索に使用）
 - [OpenAI Whisper](https://github.com/openai/whisper) - 音声認識
 - [ElevenLabs](https://elevenlabs.io/) - 音声合成 API
 
