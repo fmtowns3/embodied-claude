@@ -147,6 +147,32 @@ download:
 
 The first memory operation will download the model instead.
 
+### The server takes tens of seconds to start
+
+`memory-mcp` warms the embedding model before it answers anything
+(`MemoryStore.warmup()`, called during startup). Measured on `b4ded53`, Windows
+11, with the model already on disk:
+
+```text
+import         0.6 s
+warmup()      20.3 s        intfloat/multilingual-e5-base
+```
+
+The smaller default model is quicker, and the first run is slower still because
+the model has to be fetched. Either way this is longer than a short client-side
+startup timeout allows.
+
+If `memory` is missing from the server list and nothing in the logs explains
+why, raise the startup timeout before looking for a configuration error:
+
+```bash
+MCP_TIMEOUT=120000   # milliseconds
+```
+
+A server that timed out during startup is skipped, not reported. Sessions
+continue without memory, which looks like a working setup that never recalls
+anything.
+
 ## Optional Capabilities
 
 Non-interactive setup reads credentials from the current environment and writes
